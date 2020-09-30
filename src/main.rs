@@ -6,13 +6,11 @@ use std::io::{Write, BufRead};
 use std::string::String;
 use std::convert::Infallible;
 use hyper::{Body, Request, Response, Server};
-use hyper::service::{make_service_fn, service_fn};
+
 
 //use std::sync::mpsc::channel()
 // for read_into_string()
 use std::io::prelude::*;
-
-// use handlebars::Handlebars;
 
 #[derive(Debug)]
 struct Wetter {
@@ -22,7 +20,7 @@ struct Wetter {
 }
 
 
-async fn hello_world(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+async fn _hello_world(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
 
     let f = std::fs::File::open("/tmp/foo");
     if f.is_err() {
@@ -55,7 +53,7 @@ async fn hello_world(req: Request<Body>) -> Result<Response<Body>, Infallible> {
 }
 
 
-fn mythread(mut stream: TcpStream, _addr: SocketAddr) {
+fn _mythread(mut stream: TcpStream, _addr: SocketAddr) {
     eprintln!("New connection: {:?}", stream);
     // sleep(std::time::Duration::from_secs(1));
     stream.set_read_timeout(Option::from(std::time::Duration::from_secs(5))).expect("could not set read timeout");
@@ -91,11 +89,20 @@ fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
             continue;
         }
         // https://de.wikipedia.org/wiki/KNX-Standard
-        let a_src = EibAddr(buf[0] >> 4, buf[0] & 0xf, buf[1]);
-        let a_dst = EibAddr(buf[2] >> 4, buf[2] & 0xf, buf[3]);
-        println!("  -- {:?}->{:?}", a_src, a_dst);
-        // temperature data
+        let a_src = EibAddr(buf[8] >> 4, buf[8] & 0xf, buf[9]);
+        let a_dst = EibAddr(buf[10] >> 4, buf[10] & 0xf, buf[11]);
+        let is_first = buf[9] & 0x02 != 0;
+        // 0000 0010b  0x02
+        // 0000 0101b  0x05
+        // 0000 1101b  0x0d
+        println!("  -- {:?}->{:?} (first: {})", a_src, a_dst, is_first);
+        if len == 15 {
+            // switch
+            let onoff = buf[14] & 0x1 == 1;
+            println!("On-Off: {}", onoff);
+        }
         if len == 17 {
+            // temperature data
             let (high,low) = (buf[15], buf[16]);
             // SEEE EBBB  BBBB BBBB
             let sign = 0x80 == high & 0x80;
@@ -112,7 +119,7 @@ fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
             struct Measurement { time: std::time::SystemTime, value: f32 };
 
             let val = Measurement { time: std::time::SystemTime::now(), value: value };
-	    data.lock().unwrap().
+	        let mut _v = data.lock().unwrap();
             println!("{:?}\n", val);
             let line = format!("{:?}\n", val);
             logfile.write_all(line.as_bytes()).expect("could not append to buffer");
@@ -135,7 +142,7 @@ async fn main() {
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
     u.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("");
+        &std::net::Ipv4Addr::from_str("192.168.0.8").unwrap()).expect("");
 
     let _j = std::thread::spawn(move || bus_thread(u, shared_data));
 
@@ -146,9 +153,23 @@ async fn main() {
     // A `Service` is needed for every connection, so this
     // creates one from our `hello_world` function.
     use hyper::server::conn::AddrStream;
-    let make_svc = make_service_fn(|socket: &AddrStream| async {
+    use hyper::service::{make_service_fn, service_fn};
+    //let _service_myfunc = | _req: Request<Body> | {
+    //    println!("ASDASD");
+    //};
+    let service = service_fn(|req: Request<Body> | async move {
+        if req.version() == hyper::http::version::Version::HTTP_11 {
+            // let a = std::sync::Arc::clone(&shared_data);
+            // println!("Wetter: {:?}", &a); //foo.deref().lock().unwrap());
+            Ok(Response::new(Body::from("Hello World")))
+        } else {
+            // note: better: return a response with status code
+            Err("not HTTP/1.1, abort connection")
+        }
+    });
+    let make_svc = make_service_fn(|_socket: &AddrStream| async move {
         // service_fn converts our function into a `Service`
-        Ok::<_, Infallible>(service_fn(hello_world))
+        Ok::<_, Infallible>(service)
     });
     let server = Server::bind(&addr).serve(make_svc);
 
