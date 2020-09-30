@@ -1,20 +1,70 @@
-
+use std::sync::{Arc, Mutex};
 use std::str::FromStr;
 use std::net::{TcpStream, SocketAddr};
 use std::io::{Write, BufRead};
+
+use std::string::String;
+use std::convert::Infallible;
+use hyper::{Body, Request, Response, Server};
+use hyper::service::{make_service_fn, service_fn};
+
+//use std::sync::mpsc::channel()
+// for read_into_string()
+use std::io::prelude::*;
+
+// use handlebars::Handlebars;
+
+#[derive(Debug)]
+struct Wetter {
+    a: String,
+    b: String,
+    c: String
+}
+
+
+async fn hello_world(req: Request<Body>) -> Result<Response<Body>, Infallible> {
+
+    let f = std::fs::File::open("/tmp/foo");
+    if f.is_err() {
+	return Ok(Response::builder().status(400).body("ERROR 0".into() ).unwrap());
+    }
+
+    let mut data = std::string::String::new();
+    if f.unwrap().read_to_string(&mut data).is_err() {
+	return Ok(Response::builder().status(300).body("ERROR 1".into() ).unwrap());
+    }
+
+    let mut handlebars = handlebars::Handlebars::new();
+    if handlebars.register_template_file("/", "template/index.html").is_err() {
+	return Ok(Response::builder().status(300).body("ERROR 2".into() ).unwrap());
+    }
+
+    #[derive(serde::Serialize)]
+    struct Info {
+	foo: std::string::String,
+	bar: i64,
+    };
+
+    let info = Info { foo: "foo".to_owned(),
+		      bar: 1231,
+    };
+
+    let output = handlebars.render("/", &info);
+
+    Ok(Response::builder().status(200).body( output.unwrap().into() ).unwrap())
+}
 
 
 fn mythread(mut stream: TcpStream, _addr: SocketAddr) {
     eprintln!("New connection: {:?}", stream);
     // sleep(std::time::Duration::from_secs(1));
     stream.set_read_timeout(Option::from(std::time::Duration::from_secs(5))).expect("could not set read timeout");
-    let a= std::string::String::from("ASD\n");
+
+    let a = std::string::String::from("ASD\n");
 
     stream.write_all(a.as_bytes()).expect("write failed");
     stream.write_all("Hallo\n\n".as_bytes()).expect("write failed");
-
     let r = std::io::BufReader::new(&stream);
-
     for l in r.lines() {
         println!("Zeile: {}", l.unwrap())
     }
@@ -23,8 +73,9 @@ fn mythread(mut stream: TcpStream, _addr: SocketAddr) {
 #[derive(Debug)]
 struct EibAddr (u8, u8, u8);
 
-fn bus_thread(u: std::net::UdpSocket) {
+fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
+
 
     let mut logfile = std::io::BufWriter::new(a);
 
@@ -61,6 +112,7 @@ fn bus_thread(u: std::net::UdpSocket) {
             struct Measurement { time: std::time::SystemTime, value: f32 };
 
             let val = Measurement { time: std::time::SystemTime::now(), value: value };
+	    data.lock().unwrap().
             println!("{:?}\n", val);
             let line = format!("{:?}\n", val);
             logfile.write_all(line.as_bytes()).expect("could not append to buffer");
@@ -70,22 +122,49 @@ fn bus_thread(u: std::net::UdpSocket) {
 }
 
 
-fn main() {
-    let addr = std::net::SocketAddrV4::from_str("0.0.0.0:1234").unwrap();
+#[tokio::main]
+async fn main() {
+    // let addr = std::net::SocketAddrV4::from_str("0.0.0.0:1234").unwrap();
+    let shared_data = Arc::new(Mutex::new(Wetter {
+	a: "Ah".to_owned(),
+	b: "Beh".to_owned(),
+	c: "Zeh".to_owned()
+    }));
+
 
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
     u.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.78").unwrap()).expect("");
+        &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("");
 
-    let j = std::thread::spawn(move || bus_thread(u));
+    let _j = std::thread::spawn(move || bus_thread(u, shared_data));
 
-    let l = std::net::TcpListener::bind(addr).unwrap();
-    while let x = l.accept() {
-        let  (stream, addr) = x.unwrap();
-        let h = std::thread::spawn(move || mythread(stream, addr));
-        h.join().expect("Could not join() thread.");
+
+    // We'll bind to 127.0.0.1:3000
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+
+    // A `Service` is needed for every connection, so this
+    // creates one from our `hello_world` function.
+    use hyper::server::conn::AddrStream;
+    let make_svc = make_service_fn(|socket: &AddrStream| async {
+        // service_fn converts our function into a `Service`
+        Ok::<_, Infallible>(service_fn(hello_world))
+    });
+    let server = Server::bind(&addr).serve(make_svc);
+
+
+    // We'll bind to 127.0.0.1:3001
+    // let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    // let l = std::net::TcpListener::bind(addr).unwrap();
+    // loop {
+    // 	let x = l.accept();
+    //     let  (stream, addr) = x.unwrap();
+    //     let h = std::thread::spawn(move || mythread(stream, addr));
+    //     h.join().expect("Could not join() thread.");
+    // }
+
+    if let Err(e) = server.await {
+        eprintln!("server error: {}", e);
     }
-
-    j.join().expect("Could not join() thread.")
+    // j.join().expect("Could not join() thread.")
 }
