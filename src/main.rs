@@ -12,44 +12,61 @@ use hyper::{Body, Request, Response, Server};
 // for read_into_string()
 use std::io::prelude::*;
 
+#[derive(Debug, Copy, Clone)]
+struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
+
+#[derive(Debug)]
+struct Measurement { received: Received, value: f32 }
+
+#[derive(Debug)]
+struct DimmerZielwert { received: Received, value: u8 }
+
+#[derive(Debug)]
+struct Data { received: Received, hex_string: String }
+
+#[derive(Debug, Copy, Clone)]
+struct EibAddr(u8, u8, u8);
+
 #[derive(Debug)]
 struct Wetter {
     a: String,
     b: String,
-    c: String
+    c: String,
 }
 
 
-async fn _hello_world(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-
+async fn hello_world(_req: Request<Body>, remote_addr: SocketAddr) -> Result<Response<Body>, Infallible> {
     let f = std::fs::File::open("/tmp/foo");
     if f.is_err() {
-	return Ok(Response::builder().status(400).body("ERROR 0".into() ).unwrap());
+        return Ok(Response::builder().status(400).body("ERROR 0".into()).unwrap());
     }
 
     let mut data = std::string::String::new();
     if f.unwrap().read_to_string(&mut data).is_err() {
-	return Ok(Response::builder().status(300).body("ERROR 1".into() ).unwrap());
+        return Ok(Response::builder().status(300).body("ERROR 1".into()).unwrap());
     }
 
     let mut handlebars = handlebars::Handlebars::new();
     if handlebars.register_template_file("/", "template/index.html").is_err() {
-	return Ok(Response::builder().status(300).body("ERROR 2".into() ).unwrap());
+        return Ok(Response::builder().status(300).body("ERROR 2".into()).unwrap());
     }
 
     #[derive(serde::Serialize)]
     struct Info {
-	foo: std::string::String,
-	bar: i64,
-    };
+        foo: std::string::String,
+        bar: i64,
+        addr: String,
+    }
 
-    let info = Info { foo: "foo".to_owned(),
-		      bar: 1231,
+    let info = Info {
+        foo: "foo".to_owned(),
+        bar: 1231,
+        addr: format!("{:?}", remote_addr.to_string()),
     };
 
     let output = handlebars.render("/", &info);
 
-    Ok(Response::builder().status(200).body( output.unwrap().into() ).unwrap())
+    Ok(Response::builder().status(200).body(output.unwrap().into()).unwrap())
 }
 
 
@@ -68,62 +85,74 @@ fn _mythread(mut stream: TcpStream, _addr: SocketAddr) {
     }
 }
 
-#[derive(Debug)]
-struct EibAddr (u8, u8, u8);
 
 fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
+    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
 
 
     let mut logfile = std::io::BufWriter::new(a);
+    let mut logfile_hex = std::io::BufWriter::new(b);
 
     loop {
-        let mut buf = [0_u8;32];
-        let (len,addr) = u.recv_from(&mut buf).expect("recv_from() failed.");
+        let mut buf = [0_u8; 32];
+        let (len, addr) = u.recv_from(&mut buf).expect("recv_from() failed.");
         print!("Got {} bytes from {}: ", len, addr);
+        let mut hex_string = std::string::String::new();
         for a in buf[0..len].iter() {
-            print!("{:02X} ", a);
-        }
-        if len < 11 {
-            println!(" too short.");
-            continue;
+            // print!("{:02X} ", a);
+            let c = format!("{:02X} ", a);
+
+            hex_string.push_str(&c);
         }
         // https://de.wikipedia.org/wiki/KNX-Standard
         let a_src = EibAddr(buf[8] >> 4, buf[8] & 0xf, buf[9]);
         let a_dst = EibAddr(buf[10] >> 4, buf[10] & 0xf, buf[11]);
-        let is_first = buf[9] & 0x02 != 0;
+        let _is_first = buf[9] & 0x02 != 0;
+        let r = Received { time: std::time::SystemTime::now(), source: a_src, dest: a_dst };
+
+        let d: Data = Data { received: r, hex_string: hex_string };
+        logfile_hex.write_all(format!("{:?}\n", d).as_bytes()).expect("write_all() failed");
+        logfile_hex.flush().expect("flush() failed");
+        if len < 11 {
+            println!(" too short.");
+            continue;
+        }
+
         // 0000 0010b  0x02
         // 0000 0101b  0x05
         // 0000 1101b  0x0d
-        println!("  -- {:?}->{:?} (first: {})", a_src, a_dst, is_first);
+        // println!("{}  -- {:?}->{:?} (first: {})", &hex_string, a_src, a_dst, is_first);
         if len == 15 {
             // switch
             let onoff = buf[14] & 0x1 == 1;
             println!("On-Off: {}", onoff);
         }
+        if len == 16 {
+            // Wert 0..255 unsigned (z.B. Zielwert Dimmer setzen)
+            let _value = f32::from(buf[15]);
+        }
         if len == 17 {
             // temperature data
-            let (high,low) = (buf[15], buf[16]);
+            let (high, low) = (buf[15], buf[16]);
+
             // SEEE EBBB  BBBB BBBB
             let sign = 0x80 == high & 0x80;
             let exponent = (i32::from(high) & 0x78) >> 3;
             let base = (u16::from(high & 0x07) << 8) | u16::from(low);
-            println!("high,low: {:02X}, {:02X}", high, low);
-            println!("sign: {}, exponent: {}, base: {}", sign, exponent, base);
+
             let value = match sign {
-                true =>  f32::from(base) * -0.01f32 * 2.0f32 .powi (exponent),
-                false => f32::from(base) *  0.01f32 * 2.0f32 .powi(exponent)
+                true => f32::from(base) * -0.01f32 * 2.0f32.powi(exponent),
+                false => f32::from(base) * 0.01f32 * 2.0f32.powi(exponent)
             };
 
-            #[derive(Debug)]
-            struct Measurement { time: std::time::SystemTime, value: f32 };
 
-            let val = Measurement { time: std::time::SystemTime::now(), value: value };
-	        let mut _v = data.lock().unwrap();
+            let val = Measurement { received: r, value: value };
+            let mut _v = data.lock().unwrap();
             println!("{:?}\n", val);
             let line = format!("{:?}\n", val);
             logfile.write_all(line.as_bytes()).expect("could not append to buffer");
-            logfile.flush().expect("could not write to file.");
+            logfile.flush().expect("could not write to file.")
         }
     }
 }
@@ -133,9 +162,9 @@ fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 async fn main() {
     // let addr = std::net::SocketAddrV4::from_str("0.0.0.0:1234").unwrap();
     let shared_data = Arc::new(Mutex::new(Wetter {
-	a: "Ah".to_owned(),
-	b: "Beh".to_owned(),
-	c: "Zeh".to_owned()
+        a: "Ah".to_owned(),
+        b: "Beh".to_owned(),
+        c: "Zeh".to_owned(),
     }));
 
 
@@ -154,35 +183,24 @@ async fn main() {
     // creates one from our `hello_world` function.
     use hyper::server::conn::AddrStream;
     use hyper::service::{make_service_fn, service_fn};
-    //let _service_myfunc = | _req: Request<Body> | {
-    //    println!("ASDASD");
-    //};
-    let service = service_fn(|req: Request<Body> | async move {
-        if req.version() == hyper::http::version::Version::HTTP_11 {
-            // let a = std::sync::Arc::clone(&shared_data);
-            // println!("Wetter: {:?}", &a); //foo.deref().lock().unwrap());
-            Ok(Response::new(Body::from("Hello World")))
-        } else {
-            // note: better: return a response with status code
-            Err("not HTTP/1.1, abort connection")
+
+    // And a MakeService to handle each connection...
+    let make_svc = make_service_fn(|socket: &AddrStream| {
+        let remote_addr = socket.remote_addr();
+        //let w = shared_data.lock().expect("lock() failed");
+        // create a service answering the requests
+        async move {
+            Ok::<_, Infallible>(service_fn(move |req: Request<Body>| async move {
+                hello_world(req, remote_addr).await
+                //Ok::<_, Infallible>(
+                //    Response::new(Body::from(format!("Hello, {}!", remote_addr)))
+                //)
+            }))
         }
     });
-    let make_svc = make_service_fn(|_socket: &AddrStream| async move {
-        // service_fn converts our function into a `Service`
-        Ok::<_, Infallible>(service)
-    });
+
+    // Then bind and serve...
     let server = Server::bind(&addr).serve(make_svc);
-
-
-    // We'll bind to 127.0.0.1:3001
-    // let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
-    // let l = std::net::TcpListener::bind(addr).unwrap();
-    // loop {
-    // 	let x = l.accept();
-    //     let  (stream, addr) = x.unwrap();
-    //     let h = std::thread::spawn(move || mythread(stream, addr));
-    //     h.join().expect("Could not join() thread.");
-    // }
 
     if let Err(e) = server.await {
         eprintln!("server error: {}", e);
