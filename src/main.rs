@@ -7,10 +7,8 @@ use std::string::String;
 use std::convert::Infallible;
 use hyper::{Body, Request, Response, Server};
 
-
 //use std::sync::mpsc::channel()
 // for read_into_string()
-use std::io::prelude::*;
 
 #[derive(Debug, Copy, Clone)]
 struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
@@ -35,33 +33,40 @@ struct Wetter {
 }
 
 
-async fn hello_world(_req: Request<Body>, remote_addr: SocketAddr) -> Result<Response<Body>, Infallible> {
-    let f = std::fs::File::open("/tmp/foo");
-    if f.is_err() {
-        return Ok(Response::builder().status(400).body("ERROR 0".into()).unwrap());
-    }
-
-    let mut data = std::string::String::new();
-    if f.unwrap().read_to_string(&mut data).is_err() {
-        return Ok(Response::builder().status(300).body("ERROR 1".into()).unwrap());
-    }
+async fn hello_world(_req: Request<Body>, remote_addr: SocketAddr, wetter: Arc<Mutex<Wetter>>) -> Result<Response<Body>, Infallible> {
+    // let f = std::fs::File::open("/tmp/foo");
+    // if f.is_err() {
+    //     return Ok(Response::builder().status(400).body("ERROR 0".into()).unwrap());
+    // }
+    //
+    // let mut data = std::string::String::new();
+    // if f.unwrap().read_to_string(&mut data).is_err() {
+    //     return Ok(Response::builder().status(300).body("ERROR 1".into()).unwrap());
+    // }
 
     let mut handlebars = handlebars::Handlebars::new();
     if handlebars.register_template_file("/", "template/index.html").is_err() {
         return Ok(Response::builder().status(300).body("ERROR 2".into()).unwrap());
     }
 
+    let mut _w = wetter.lock().unwrap();
+    // wetter.lock()a.push('.');
+
+    _w.a.push('.');
+
     #[derive(serde::Serialize)]
     struct Info {
         foo: std::string::String,
         bar: i64,
         addr: String,
+        wetter_a: String,
     }
 
     let info = Info {
         foo: "foo".to_owned(),
         bar: 1231,
         addr: format!("{:?}", remote_addr.to_string()),
+        wetter_a: _w.a.clone(),
     };
 
     let output = handlebars.render("/", &info);
@@ -149,6 +154,7 @@ fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 
             let val = Measurement { received: r, value: value };
             let mut _v = data.lock().unwrap();
+            _v.a = val.value.to_string();
             println!("{:?}\n", val);
             let line = format!("{:?}\n", val);
             logfile.write_all(line.as_bytes()).expect("could not append to buffer");
@@ -171,9 +177,10 @@ async fn main() {
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
     u.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.8").unwrap()).expect("");
+        &std::net::Ipv4Addr::from_str("192.168.0.78").unwrap()).expect("");
 
-    let _j = std::thread::spawn(move || bus_thread(u, shared_data));
+    let bus_data = shared_data.clone();
+    let _j = std::thread::spawn(move || bus_thread(u, bus_data));
 
 
     // We'll bind to 127.0.0.1:3000
@@ -186,15 +193,29 @@ async fn main() {
 
     // And a MakeService to handle each connection...
     let make_svc = make_service_fn(|socket: &AddrStream| {
+        // this function is executed for each incoming connection
         let remote_addr = socket.remote_addr();
-        //let w = shared_data.lock().expect("lock() failed");
+
+        let connection_data = shared_data.to_owned();
         // create a service answering the requests
         async move {
-            Ok::<_, Infallible>(service_fn(move |req: Request<Body>| async move {
-                hello_world(req, remote_addr).await
-                //Ok::<_, Infallible>(
-                //    Response::new(Body::from(format!("Hello, {}!", remote_addr)))
-                //)
+            // let connection_data = shared_data.clone();
+            Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
+                let _request_data = connection_data.clone();
+                println!("_request_data: {:?}", _request_data);
+                async move {
+                    //let request_data = connection_data.clone();
+                    // this function is executed for each request inside a connection
+                    //let wetter = connection_data.lock().unwrap().a.clone();
+                    let _a = _request_data.clone();
+                    // _a.lock()
+                    // let mut data = _a.lock().unwrap(); //Wetter { a: "A".to_string(), b: "C".to_string(), c: "C".to_string() };
+                    // let wetter = Wetter { a: "A".to_string(), b: "B".to_string(), c: "C".to_string() };
+                    hello_world(req, remote_addr, _a).await
+                    //Ok::<_, Infallible>(
+                    //    Response::new(Body::from(format!("Hello, {}!", remote_addr)))
+                    //)
+                }
             }))
         }
     });
