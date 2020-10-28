@@ -5,6 +5,7 @@ use std::io::{Write, BufRead};
 
 use std::string::String;
 use std::convert::Infallible;
+use hyper::body;
 use hyper::{Body, Request, Response, Server};
 
 //use std::sync::mpsc::channel()
@@ -33,7 +34,7 @@ struct Wetter {
 }
 
 
-async fn hello_world(_req: Request<Body>, remote_addr: SocketAddr, wetter: Arc<Mutex<Wetter>>) -> Result<Response<Body>, Infallible> {
+async fn hello_world(req: Request<Body>, remote_addr: SocketAddr, wetter: Arc<Mutex<Wetter>>) -> Result<Response<Body>, Infallible> {
     // let f = std::fs::File::open("/tmp/foo");
     // if f.is_err() {
     //     return Ok(Response::builder().status(400).body("ERROR 0".into()).unwrap());
@@ -43,6 +44,13 @@ async fn hello_world(_req: Request<Body>, remote_addr: SocketAddr, wetter: Arc<M
     // if f.unwrap().read_to_string(&mut data).is_err() {
     //     return Ok(Response::builder().status(300).body("ERROR 1".into()).unwrap());
     // }
+    println!("METHOD: {:?}", &req.method());
+    let bytes = body::to_bytes(req.into_body()).await.expect("failed!");
+    let body_str = String::from_utf8(bytes.to_vec()).expect("nody was not valid utf8");
+
+    //req.body().on_upgrade().await.unwrap().read_to_string().await.unwrap();
+
+    println!("BODY: {:?}",body_str);
 
     let mut handlebars = handlebars::Handlebars::new();
     if handlebars.register_template_file("/", "template/index.html").is_err() {

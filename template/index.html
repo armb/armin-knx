@@ -1,13 +1,31 @@
-<html>
+<html lang="de">
   <head>
 <title>{{ foo }}</title>
+    <script>
+    function myFunction() {
+      let req = new XMLHttpRequest();
+      req.open("PUT", document.documentURI);
+      req.send("argument=value");
+      //document.getElementById("demo").innerText = "BUTTON";
+    }
+  </script>
 </head>
 <body>
+
+
 <h1>{{ foo }}</h1>
 
 Data: {{ bar }}
 <address>
   addr: {{ addr }}, wetter_a: "{{ wetter_a }}"
 </address>
+
+<!--
+<form action="" method="post">
+<label for="test">Test2</label>
+  <input type="text" id="test" name="ftest">
+  -->
+  <input type="submit" value="Submit" onclick="myFunction(); console.trace('trage');" >
+<!-- </form> -->
 </body>
 </html>
