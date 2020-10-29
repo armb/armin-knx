@@ -221,16 +221,17 @@ async fn main() {
     let make_svc = make_service_fn(|socket: &AddrStream| {
         // this function is executed for each incoming connection
         let remote_addr = socket.remote_addr();
-
-        let connection_data = shared_data.to_owned();
+	let connection_tx = tx.clone();
+        let connection_data = shared_data.clone(); //to_owned();
         // create a service answering the requests
         async move {
             Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
-                let _request_data = connection_data.clone();
-                println!("_request_data: {:?}", _request_data);
+                let request_data = connection_data.clone();
+		let request_tx = connection_tx.clone();
+                println!("request_data: {:?}", request_data);
                 async move {
                     // this function is executed for each request inside a connection
-                    let _a = _request_data.clone();
+                    let _a = request_data.clone();
                     hello_world(req, remote_addr, _a).await
                 }
             }))
