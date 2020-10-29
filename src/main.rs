@@ -101,7 +101,8 @@ fn _mythread(mut stream: TcpStream, _addr: SocketAddr) {
 
 fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
-    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
+//    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
+    let b = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo.hex").expect("Could not open file");
 
 
     let mut logfile = std::io::BufWriter::new(a);
@@ -185,14 +186,14 @@ async fn main() {
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
     u.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.78").unwrap()).expect("");
+        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("");
 
     let bus_data = shared_data.clone();
     let _j = std::thread::spawn(move || bus_thread(u, bus_data));
 
 
     // We'll bind to 127.0.0.1:3000
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 
     // A `Service` is needed for every connection, so this
     // creates one from our `hello_world` function.
