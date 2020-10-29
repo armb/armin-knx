@@ -34,7 +34,11 @@ struct Wetter {
 }
 
 
-async fn hello_world(req: Request<Body>, remote_addr: SocketAddr, wetter: Arc<Mutex<Wetter>>) -> Result<Response<Body>, Infallible> {
+use std::sync::mpsc::Sender;
+async fn hello_world(req: Request<Body>,
+		     remote_addr: SocketAddr,
+		     wetter: Arc<Mutex<Wetter>>,
+		     tx: Sender<KnxPacket>) -> Result<Response<Body>, Infallible> {
     // let f = std::fs::File::open("/tmp/foo");
     // if f.is_err() {
     //     return Ok(Response::builder().status(400).body("ERROR 0".into()).unwrap());
@@ -44,13 +48,21 @@ async fn hello_world(req: Request<Body>, remote_addr: SocketAddr, wetter: Arc<Mu
     // if f.unwrap().read_to_string(&mut data).is_err() {
     //     return Ok(Response::builder().status(300).body("ERROR 1".into()).unwrap());
     // }
-    println!("METHOD: {:?}", &req.method());
+//    println!("METHOD: {:?}", &req.method());
+    let m = req.method().clone();
     let bytes = body::to_bytes(req.into_body()).await.expect("failed!");
     let body_str = String::from_utf8(bytes.to_vec()).expect("nody was not valid utf8");
+    //    println!("BODY: {:?}",body_str);
+    if m == "PUT" {
+	let a = KnxPacket { a: body_str }; //.to_owned() };
+	tx.send(a).expect("tx queue full");
+//	if (body_str == "hallo") {
+//	}
+    }
 
     //req.body().on_upgrade().await.unwrap().read_to_string().await.unwrap();
 
-    println!("BODY: {:?}",body_str);
+
 
     let mut handlebars = handlebars::Handlebars::new();
     if handlebars.register_template_file("/", "template/index.html").is_err() {
@@ -231,8 +243,7 @@ async fn main() {
                 println!("request_data: {:?}", request_data);
                 async move {
                     // this function is executed for each request inside a connection
-                    let _a = request_data.clone();
-                    hello_world(req, remote_addr, _a).await
+                    hello_world(req, remote_addr, request_data, request_tx).await
                 }
             }))
         }
