@@ -99,6 +99,20 @@ fn _mythread(mut stream: TcpStream, _addr: SocketAddr) {
 }
 
 
+#[derive(Debug)]
+struct KnxPacket {
+    a: String,
+}
+
+use std::sync::mpsc::channel; //function
+fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
+    loop {
+	let packet = rx.recv().unwrap();
+	println!("Packet: {:?}", packet);
+    }
+}
+
+
 fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
 //    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
@@ -182,11 +196,14 @@ async fn main() {
         c: "Zeh".to_owned(),
     }));
 
+    let (tx, rx) = channel();
+    let _s = std::thread::spawn(move || bus_send_thread(rx));
+
 
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
     u.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("");
+        &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("");
 
     let bus_data = shared_data.clone();
     let _j = std::thread::spawn(move || bus_thread(u, bus_data));
@@ -208,22 +225,13 @@ async fn main() {
         let connection_data = shared_data.to_owned();
         // create a service answering the requests
         async move {
-            // let connection_data = shared_data.clone();
             Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
                 let _request_data = connection_data.clone();
                 println!("_request_data: {:?}", _request_data);
                 async move {
-                    //let request_data = connection_data.clone();
                     // this function is executed for each request inside a connection
-                    //let wetter = connection_data.lock().unwrap().a.clone();
                     let _a = _request_data.clone();
-                    // _a.lock()
-                    // let mut data = _a.lock().unwrap(); //Wetter { a: "A".to_string(), b: "C".to_string(), c: "C".to_string() };
-                    // let wetter = Wetter { a: "A".to_string(), b: "B".to_string(), c: "C".to_string() };
                     hello_world(req, remote_addr, _a).await
-                    //Ok::<_, Infallible>(
-                    //    Response::new(Body::from(format!("Hello, {}!", remote_addr)))
-                    //)
                 }
             }))
         }
