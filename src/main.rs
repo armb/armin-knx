@@ -17,10 +17,11 @@ use hyper::{Body, Request, Response, Server};
 
 extern {
     fn _EIBSocketURL(url: *const u8) -> *mut libc::c_void;
-    fn EIBSocketLocal(path: *const u8) -> *mut libc::c_void;
-    fn EIBClose(conn: *mut libc::c_void) -> i64;
+    fn _EIBSocketLocal(path: *const u8) -> *mut libc::c_void;
+    fn malloc(len: i64) -> *mut libc::c_void;
+    fn _EIBClose(conn: *mut libc::c_void) -> i64;
     fn _EIBComplete(conn: *mut libc::c_void) -> i64;
-    fn EIBSendAPDU(conn: *mut libc::c_void, len: usize , buf: *const u8) -> i64;
+    fn _EIBSendAPDU(conn: *mut libc::c_void, len: usize , buf: *const u8) -> i64;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -34,6 +35,8 @@ struct DimmerZielwert { received: Received, value: u8 }
 
 #[derive(Debug)]
 struct Data { received: Received, hex_string: String }
+
+struct Bus { value: f32 } //con: *mut libc::c_void }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 struct EibAddr(u8, u8, u8);
@@ -133,7 +136,7 @@ struct KnxPacket {
 }
 
 use std::sync::mpsc::channel; //function
-fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
+fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, _con: Bus) {
     // create udp socket
     let u = std::net::UdpSocket::bind("192.168.0.208:51001").expect("bind failed");
 //    let a = std::net::Ipv4Addr::from_str("192.168.0.162:51000").unwrap();
@@ -246,13 +249,17 @@ fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 
 #[tokio::main]
 async fn main() {
-    let buf = &[10u8, 20, 20, 0];
+//    let buf = &[10u8, 20, 20, 0];
+    let con: *mut libc::c_void;
     unsafe {
-	let con = EIBSocketLocal("/tmp/eib".as_ptr());
+	con = malloc(100);
+	// let con = EIBSocketLocal("/run/knx".as_ptr());
+	//
+	//	let con = EIBSocketURL("ip:localhost:3671");
 //	EIBClose(con);
-//	if con == std::ptr::null_mut() { panic!("no connection to knxd"); }
+	if con == std::ptr::null_mut() { panic!("no connection to knxd"); }
 
-	let _l = EIBSendAPDU(con, buf.len(), &buf[0]);
+	//let _l = EIBSendAPDU(con, buf.len(), &buf[0]);
     }
     // let addr = std::net::SocketAddrV4::from_str("0.0.0.0:1234").unwrap();
     let shared_data = Arc::new(Mutex::new(Wetter {
@@ -262,7 +269,10 @@ async fn main() {
     }));
 
     let (tx, rx) = channel();
-    let _s = std::thread::spawn(move || bus_send_thread(rx));
+
+    let bus = Bus { value: 123. };
+    
+    let _s = std::thread::spawn( || bus_send_thread(rx, bus));
 
 
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
