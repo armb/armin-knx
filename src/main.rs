@@ -46,6 +46,7 @@ struct Wetter {
     a: String,
     b: String,
     c: String,
+    lampe: String,
 }
 
 
@@ -97,6 +98,7 @@ async fn hello_world(req: Request<Body>,
         temp_a: String,
 	temp_b: String,
 	temp_c: String,
+	lampe: String,
     }
 
     let info = Info {
@@ -106,6 +108,7 @@ async fn hello_world(req: Request<Body>,
         temp_a: _w.a.clone(),
 	temp_b: _w.b.clone(),
 	temp_c: _w.c.clone(),
+	lampe: _w.lampe.clone(),
     };
 
     let output = handlebars.render("/", &info);
@@ -136,25 +139,33 @@ struct KnxPacket {
 }
 
 use std::sync::mpsc::channel; //function
-fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, _con: Bus) {
+fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>,
+		   u: &std::net::UdpSocket,
+		   _con: Bus) {
+    println!("bus.value={:?}", _con.value);
+
     // create udp socket
-    let u = std::net::UdpSocket::bind("192.168.0.208:51001").expect("bind failed");
+//    let u = std::net::UdpSocket::bind("192.168.0.208:51001").expect("bind failed");
 //    let a = std::net::Ipv4Addr::from_str("192.168.0.162:51000").unwrap();
 
-    u.connect("192.168.0.162:51000"  ).expect("connect() failed");
+    //    u.connect("192.168.0.162:51000"  ).expect("connect() failed");
+    u.connect("239.192.39.238:51000"  ).expect("connect() failed");
 
 
     // wait for send-requests from other threads
     loop {
 	let packet = rx.recv().unwrap();
 	if packet.a == "Moin" {
-	    // send command to switch light on
-	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x28];
+	    // send command to switch light off (Till)
+	    let raw = [ 0x10, 0x06, 0x00, 0x0f, 0x02, 0x01, 0x29, 0xbc, 0x12, 0x04, 0x04, 0x01, 0xd1, 0x00, 0x80 ];
+
+//	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x28];
 	    u.send(&raw).expect("send() failed");
 	}
 	else if packet.a == "Hallo" {
-	    // send command to switch light on
-	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x00];
+	    // send command to switch light on (Till)
+	    let raw = [ 0x10, 0x06, 0x00, 0x0f, 0x02, 0x01, 0x29, 0xbc, 0x12, 0x04, 0x04, 0x01, 0xd1, 0x00, 0x81 ];
+//	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x00];
 	    u.send(&raw).expect("send() failed");
 	}
 
@@ -163,7 +174,7 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, _con: Bus) {
 }
 
 
-fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
+fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
 //    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
     let b = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo.hex").expect("Could not open file");
@@ -203,8 +214,16 @@ fn bus_thread(u: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
         // println!("{}  -- {:?}->{:?} (first: {})", &hex_string, a_src, a_dst, is_first);
         if len == 15 {
             // switch
+	    // Tills Licht AN:   10 06 00 0f 02 01 29 bc 12 04 04 01 d1 00 81
+	    // Tills Licht AUS:  10 06 00 0f 02 01 29 bc 12 04 04 01 d1 00 80
             let onoff = buf[14] & 0x1 == 1;
             println!("On-Off: {}", onoff);
+	    let mut _v = data.lock().unwrap();
+	    if onoff {
+		_v.lampe = "ON".to_owned();
+	    } else {
+		_v.lampe = "OFF".to_owned();
+	    }
         }
         if len == 16 {
             // Wert 0..255 unsigned (z.B. Zielwert Dimmer setzen)
@@ -266,27 +285,32 @@ async fn main() {
         a: "Ah".to_owned(),
         b: "Beh".to_owned(),
         c: "Zeh".to_owned(),
+	lampe: "?".to_owned(),
     }));
 
-    let (tx, rx) = channel();
-
-    let bus = Bus { value: 123. };
-    
-    let _s = std::thread::spawn( || bus_send_thread(rx, bus));
 
 
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
     u.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("");
+        &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("join_multicast_v4()");
+
+    u.set_multicast_loop_v4(true).expect("set_multicast_loop()");
 
     let bus_data = shared_data.clone();
-    let _j = std::thread::spawn(move || bus_thread(u, bus_data));
+    let (tx, rx) = channel();
+    let bus = Bus { value: 123. };
+
+//    let u1 = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
+
+
+//    let u1 = u.try_clone().expect("try_clone() failed");
+//   let _s = std::thread::spawn(move || bus_send_thread(rx, &u, bus));
+    let _j = std::thread::spawn(move || bus_receive_thread(&u, bus_data));
 
 
     // We'll bind to 127.0.0.1:3000
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
-
     // A `Service` is needed for every connection, so this
     // creates one from our `hello_world` function.
     use hyper::server::conn::AddrStream;
