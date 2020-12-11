@@ -16,7 +16,7 @@ use hyper::{Body, Request, Response, Server};
 #[link(name="eibclient")]
 
 extern {
-    fn _EIBSocketURL(url: *const u8) -> *mut libc::c_void;
+    fn EIBSocketURL(url: *const u8) -> *mut libc::c_void;
     fn _EIBSocketLocal(path: *const u8) -> *mut libc::c_void;
     fn malloc(len: i64) -> *mut libc::c_void;
     fn _EIBClose(conn: *mut libc::c_void) -> i64;
@@ -271,10 +271,10 @@ async fn main() {
 //    let buf = &[10u8, 20, 20, 0];
     let con: *mut libc::c_void;
     unsafe {
-	con = malloc(100);
+	//con = malloc(100);
 	// let con = EIBSocketLocal("/run/knx".as_ptr());
 	//
-	//	let con = EIBSocketURL("ip:localhost:3671");
+	let con = EIBSocketURL("ip::3671");
 //	EIBClose(con);
 	if con == std::ptr::null_mut() { panic!("no connection to knxd"); }
 
