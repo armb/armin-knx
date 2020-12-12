@@ -1,0 +1,11 @@
+body {
+    margin: 10px;
+    background-color: darkslategrey;
+    color: gray;
+    text-align: center;
+}
+
+#measurement {
+    font-size: x-large;
+    vertical-align: center;
+}

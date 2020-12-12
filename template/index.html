@@ -1,6 +1,7 @@
 <html lang="de">
   <head>
-    <title>{{ foo }}</title>
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="default-style.css">
     <script>
       function myFunction(body) {
 	  let req = new XMLHttpRequest();
@@ -12,14 +13,12 @@
   </head>
   <body>
 
-
-    <h1>Wetter</h1>
-
-    A: {{ temp_a }}
-    B: {{ temp_b }}
-    C: {{ temp_c }}
-    Lampe: {{ temp_Lampe }}
+    <h1>Haus</h1>
+    <img src="img/house.svg" width="20%"/>
+    <hr/>
     <br/>
+    <div id="measurement"><img src="img/thermometer.svg" width="10%"/>{{ till }} &deg;C </div>
+    <hr/>
 
     <!--
 	<form action="" method="post">
