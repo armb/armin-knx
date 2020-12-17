@@ -181,10 +181,11 @@ use std::time::SystemTime;
 //function
 fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
     // create udp socket
-    let knx_ip = std::net::UdpSocket::bind("192.168.0.8:3671").expect("bind failed");
+    let knx_ip = std::net::UdpSocket::bind("0.0.0.0:0").expect("bind failed");
+//        let knx_ip = std::net::UdpSocket::bind("192.168.0.90:3671").expect("bind failed");
     knx_ip.join_multicast_v4(
          &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
-         &std::net::Ipv4Addr::from_str("192.168.0.8").unwrap()).expect("join_multicast_v4()");
+         &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
 
    //  knxIpSend.set_multicast_loop_v4(true).expect("set_multicast_loop()");
 
@@ -360,13 +361,13 @@ async fn main() {
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
     u.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.8").unwrap()).expect("join_multicast_v4()");
+        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
 
     u.set_multicast_loop_v4(true).expect("set_multicast_loop()");
 
     let bus_data = shared_data.clone();
     let (tx, rx) = channel();
-    let bus = Bus { value: 123. };
+//    let bus = Bus { value: 123. };
 
 //    let u1 = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
 
@@ -394,7 +395,7 @@ async fn main() {
             Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
                 let request_data = connection_data.clone();
 		let request_tx = connection_tx.clone();
-                println!("request_data: {:?}", request_data);
+                // println!("request_data: {:?}", request_data);
                 async move {
                     // this function is executed for each request inside a connection
                     hello_world(req, remote_addr, request_data, request_tx).await
