@@ -179,17 +179,17 @@ use std::sync::mpsc::channel;
 use std::time::SystemTime;
 
 //function
-fn _bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>,
-		   u: &std::net::UdpSocket,
-		   _con: Bus) {
-    println!("bus.value={:?}", _con.value);
-
+fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
     // create udp socket
-//    let u = std::net::UdpSocket::bind("192.168.0.208:51001").expect("bind failed");
-//    let a = std::net::Ipv4Addr::from_str("192.168.0.162:51000").unwrap();
+    let knx_ip = std::net::UdpSocket::bind("192.168.0.8:3671").expect("bind failed");
+    knx_ip.join_multicast_v4(
+         &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
+         &std::net::Ipv4Addr::from_str("192.168.0.8").unwrap()).expect("join_multicast_v4()");
+
+   //  knxIpSend.set_multicast_loop_v4(true).expect("set_multicast_loop()");
 
     //    u.connect("192.168.0.162:51000"  ).expect("connect() failed");
-    u.connect("239.192.39.238:51000"  ).expect("connect() failed");
+    knx_ip.connect("224.0.23.12:3671"  ).expect("connect() failed");
 
 
     // wait for send-requests from other threads
@@ -197,20 +197,53 @@ fn _bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>,
 	let packet = rx.recv().unwrap();
 	if packet.a == "Moin" {
 	    // send command to switch light off (Till)
-	    let raw = [ 0x10, 0x06, 0x00, 0x0f, 0x02, 0x01, 0x29, 0xbc, 0x12, 0x04, 0x04, 0x01, 0xd1, 0x00, 0x80 ];
+	    // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
+	    let raw_off = [
+	        // knx/ip header
+	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
+
+	        0x29, // data indication
+	        0x00, // extra-info
+	        0xbc, //low-prio,
+	        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+	        0x12, 0x7e, // src: 0x127e -> 1.2.126
+	        0x04, 0x01, // dst: 0.4.1:   Licht Kinderzimmer
+	        0x01, // len
+	        0x00, // 'TPCI'
+	        0x80 // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
+	        ];
+	    // let raw = [ 0x10, 0x06, 0x00, 0x0f, 0x02, 0x01, 0x29, 0xbc, 0x12, 0x04, 0x04, 0x01, 0xd1, 0x00, 0x80 ];
 
 //	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x28];
-	    u.send(&raw).expect("send() failed");
+	    let s = knx_ip.send(&raw_off).expect("send() failed");
+	    println!("send(): {}", s);
 	}
 	else if packet.a == "Hallo" {
 	    // send command to switch light on (Till)
-	    let raw = [ 0x10, 0x06, 0x00, 0x0f, 0x02, 0x01, 0x29, 0xbc, 0x12, 0x04, 0x04, 0x01, 0xd1, 0x00, 0x81 ];
+	    	    let raw_on = [
+        	        // knx/ip header
+        	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
+
+        	        0x29, // data indication
+        	        0x00, // extra-info
+        	        0xbc, //low-prio,
+        	        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+        	        0x12, 0x7e, // src: 0x127e -> 1.2.126
+        	        0x04, 0x01, // dst: 0.4.1:   Licht Kinderzimmer
+        	        0x01, // len
+        	        0x00, // 'TPCI'
+        	        0x81 // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
+        	        ];
+
+	    //let raw = [ 0x10, 0x06, 0x00, 0x0f, 0x02, 0x01, 0x29, 0xbc, 0x12, 0x04, 0x04, 0x01, 0xd1, 0x00, 0x81 ];
 //	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x00];
-	    u.send(&raw).expect("send() failed");
+	    let s = knx_ip.send(&raw_on).expect("send() failed");
+	    println!("send(): {}", s);
+
 	}
 
-	println!("Packet: {:?}", packet);
-    }
+	//println!("Packet: {:?}", packet);
+    } // loop
 }
 
 
@@ -327,19 +360,19 @@ async fn main() {
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
     u.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.78").unwrap()).expect("join_multicast_v4()");
+        &std::net::Ipv4Addr::from_str("192.168.0.8").unwrap()).expect("join_multicast_v4()");
 
     u.set_multicast_loop_v4(true).expect("set_multicast_loop()");
 
     let bus_data = shared_data.clone();
-    let (tx, _rx) = channel();
-    // let bus = Bus { value: 123. };
+    let (tx, rx) = channel();
+    let bus = Bus { value: 123. };
 
 //    let u1 = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
 
 
 //    let u1 = u.try_clone().expect("try_clone() failed");
-//   let _s = std::thread::spawn(move || bus_send_thread(rx, &u, bus));
+   let _s = std::thread::spawn(move || bus_send_thread(rx));
     let _j = std::thread::spawn(move || bus_receive_thread(&u, bus_data));
 
 
