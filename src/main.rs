@@ -8,21 +8,22 @@ use std::convert::Infallible;
 use hyper::body;
 use hyper::{Body, Request, Response, Server};
 
+
 //use std::sync::mpsc::channel()
 // for read_into_string()
 
-#[repr(C)] pub struct EIBConnection { }
+// #[repr(C)] pub struct EIBConnection { }
 
 // #[link(name="eibclient")]
 
-extern {
-    fn _EIBSocketURL(url: *const u8) -> *mut libc::c_void;
-    fn _EIBSocketLocal(path: *const u8) -> *mut libc::c_void;
-    fn _malloc(len: i64) -> *mut libc::c_void;
-    fn _EIBClose(conn: *mut libc::c_void) -> i64;
-    fn _EIBComplete(conn: *mut libc::c_void) -> i64;
-    fn _EIBSendAPDU(conn: *mut libc::c_void, len: usize , buf: *const u8) -> i64;
-}
+// extern {
+//     fn _EIBSocketURL(url: *const u8) -> *mut libc::c_void;
+//     fn EIBSocketLocal(path: *const u8) -> *mut libc::c_void;
+//     fn _malloc(len: i64) -> *mut libc::c_void;
+//     fn _EIBClose(conn: *mut libc::c_void) -> i64;
+//     fn _EIBComplete(conn: *mut libc::c_void) -> i64;
+//     fn EIBSendAPDU(conn: *mut libc::c_void, len: usize , buf: *const u8) -> i64;
+// }
 
 #[derive(Debug, Copy, Clone)]
 struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
@@ -49,7 +50,8 @@ struct DimmerZielwert { received: Received, value: u8 }
 struct Data { received: Received, hex_string: String }
 
 #[derive(Debug)]
-struct Bus { value: f32 } //con: *mut libc::c_void }
+struct Bus { value: f32, con: *mut libc::c_void }
+unsafe impl Send for Bus {}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 struct EibAddr(u8, u8, u8);
@@ -115,8 +117,6 @@ async fn hello_world(req: Request<Body>,
 
         let mut _w = wetter.lock().unwrap();
         // wetter.lock()a.push('.');
-
-        let _b = Bus { value: 23f32 };
 
         _w.a.push('.');
 
@@ -190,6 +190,7 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
 
     //    u.connect("192.168.0.162:51000"  ).expect("connect() failed");
     knx_ip.connect("224.0.23.12:3671"  ).expect("connect() failed");
+    // u.connect("239.192.39.238:51000"  ).expect("connect() failed");
 
 
     // wait for send-requests from other threads
@@ -217,6 +218,11 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
 //	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x28];
 	    let s = knx_ip.send(&raw_off).expect("send() failed");
 	    println!("send(): {}", s);
+//	    u.send(&raw).expect("send() failed");
+//       	     unsafe {
+//	        len = EIBSendAPDU(bus.con, raw.len(), &raw[0]);
+//	     }
+
 	}
 	else if packet.a == "Hallo" {
 	    // send command to switch light on (Till)
@@ -239,7 +245,9 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
 //	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x00];
 	    let s = knx_ip.send(&raw_on).expect("send() failed");
 	    println!("send(): {}", s);
-
+//            unsafe {
+//        	len = EIBSendAPDU(bus.con, raw.len(), &raw[0]);
+//	    }
 	}
 
 	//println!("Packet: {:?}", packet);
@@ -344,29 +352,30 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 async fn main() {
 //    let buf = &[10u8, 20, 20, 0];
 //     let con: *mut libc::c_void;
-    // unsafe {
+//     let bus = Bus { value: 123., con: std::ptr::null_mut() };
+
+//    unsafe {
 	//con = malloc(100);
-	// let con = EIBSocketLocal("/run/knx".as_ptr());
+//	bus.con = EIBSocketLocal(b"/run/knx\0".as_ptr());
 	//
 	// let con = EIBSocketURL("ip::3671".as_ptr());
 //	EIBClose(con);
-// 	if con == std::ptr::null_mut() { panic!("no connection to knxd"); }
+// 	if bus.con == std::ptr::null_mut() { panic!("no connection to knxd"); }
 
-	//let _l = EIBSendAPDU(con, buf.len(), &buf[0]);
-    // }
+//	let _l = EIBSendAPDU(bus.con, buf.len(), &buf[0]);
+//    }
     // let addr = std::net::SocketAddrV4::from_str("0.0.0.0:1234").unwrap();
     let shared_data = Arc::new(Mutex::new(Wetter::new() ));
 
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
     u.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.8").unwrap()).expect("join_multicast_v4()");
+        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
 
     u.set_multicast_loop_v4(true).expect("set_multicast_loop()");
 
     let bus_data = shared_data.clone();
     let (tx, rx) = channel();
-    let bus = Bus { value: 123. };
 
 //    let u1 = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
 
