@@ -77,6 +77,60 @@ impl Wetter {
 }
 
 
+fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Vec<u8>
+{
+    let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
+    let mut v = vec![
+	        // knx/ip header
+		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
+	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
+
+	        0x29, // data indication
+	        0x00, // extra-info
+	        0xbc, //low-prio,
+	0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+	0x12, 0x7e  // src: 0x127e -> 1.2.126
+    ];
+    v.append( &mut dst );
+    v.push( 1u8 ); //len
+    v.push( 0x00 ); // 'TPCI'
+    if onoff { v.push( 0x81u8 ); } else { v.push( 0x80 ); }
+
+    println!(" onoff: {:X?}", v);
+
+    (v)
+
+}
+
+
+fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Vec<u8>
+{
+    let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
+    let mut v = vec![
+	        // knx/ip header
+		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
+	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
+
+	        0x29, // data indication
+	        0x00, // extra-info
+	        0xbc, //low-prio,
+	0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+	0x12, 0x7e  // src: 0x127e -> 1.2.126
+    ];
+    v.append( &mut dst );
+    v.push( 2u8 ); //len
+    v.push( 0x00 ); // 'TPCI'
+    v.push( 0x80 );
+    v.push( percent  );
+
+    println!(" helligkeitswert: {:X?}", v);
+
+    (v)
+
+}
+
+
+
 use std::sync::mpsc::Sender;
 async fn hello_world(req: Request<Body>,
 		     remote_addr: SocketAddr,
@@ -105,8 +159,10 @@ async fn hello_world(req: Request<Body>,
         for a in &[
             "index.html",
             "default-style.css",
-            "img/house.svg",
-            "img/thermometer.svg"
+//          "img/house.png",
+//          "img/thermometer.png",
+//	    "img/light-on.png",
+//	    "img/light-off.png",
         ] {
             let uri = format!("/{}", a);
             let path = format!("template/{}", a);
@@ -197,11 +253,75 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
     // wait for send-requests from other threads
     loop {
 	let packet = rx.recv().unwrap();
+	if packet.a == "A-on" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0100, true) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "B-on" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0101, true) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "C-on" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0102, true) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "D-on" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0103, true) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "E-on" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0104, true) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "F-on" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0105, true) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "G-on" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0106, true) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "H-on" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0107, true) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "A-off" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0100, false) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "B-off" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0101, false) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "C-off" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0102, false) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "D-off" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0103, false) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "E-off" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0104, false) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "F-off" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0105, false) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "G-off" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0106, false) );
+	    println!("send(): {:?}", s);
+	}
+	if packet.a == "H-off" {
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0107, false) );
+	    println!("send(): {:?}", s);
+	}	    
 	if packet.a == "Moin" {
 	    // send command to switch light off (Till)
-	    // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-	    let raw_off = [
+	    let _till_raw_off = [
 	        // knx/ip header
+		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
 	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
 
 	        0x29, // data indication
@@ -214,11 +334,30 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
 	        0x00, // 'TPCI'
 	        0x80 // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
 	        ];
+	    
+	    let _spots_raw_50 = [
+	        // knx/ip header
+		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x12)
+	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
+
+	        0x29, // data indication
+	        0x00, // extra-info
+	        0xbc, //low-prio,
+	        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+	        0x12, 0x7e, // src: 0x127e -> 1.2.126
+	        0x02, 0x01, // dst: 0.4.1:   Licht Kinderzimmer
+	        0x02, // len
+	        0x00, // 'TPCI'
+	        0x80, // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
+		0x80,
+	    ];
+
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0104, true) );
 	    // let raw = [ 0x10, 0x06, 0x00, 0x0f, 0x02, 0x01, 0x29, 0xbc, 0x12, 0x04, 0x04, 0x01, 0xd1, 0x00, 0x80 ];
 
 //	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x28];
-	    let s = knx_ip.send(&raw_off).expect("send() failed");
-	    println!("send(): {}", s);
+//	    let s = knx_ip.send(&spots_raw_50).expect("send() failed");
+	    println!("send(): {:?}", s);
 //	    u.send(&raw).expect("send() failed");
 //       	     unsafe {
 //	        len = EIBSendAPDU(bus.con, raw.len(), &raw[0]);
@@ -227,7 +366,7 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
 	}
 	else if packet.a == "Hallo" {
 	    // send command to switch light on (Till)
-	    	    let raw_on = [
+	    	    let _till_raw_on = [
         	        // knx/ip header
         	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
 
@@ -240,12 +379,29 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
         	        0x01, // len
         	        0x00, // 'TPCI'
         	        0x81 // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
-        	        ];
+        	    ];
 
-	    //let raw = [ 0x10, 0x06, 0x00, 0x0f, 0x02, 0x01, 0x29, 0xbc, 0x12, 0x04, 0x04, 0x01, 0xd1, 0x00, 0x81 ];
-//	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x00];
-	    let s = knx_ip.send(&raw_on).expect("send() failed");
-	    println!("send(): {}", s);
+	    	let _spots_raw_25 = [
+	        // knx/ip header
+		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x12)
+	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
+
+	        0x29, // data indication
+	        0x00, // extra-info
+	        0xbc, //low-prio,
+	        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+	        0x12, 0x7e, // src: 0x127e -> 1.2.126
+	        0x02, 0x01, // dst: 0.4.1:   Licht Kinderzimmer
+	        0x02, // len
+	        0x00, // 'TPCI'
+	        0x80, // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
+		0x40,
+	        ];
+
+	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0104, false) );
+
+//	    let s = knx_ip.send(&spots_raw_25).expect("send() failed");
+	    println!("send(): {:?}", s);
 //            unsafe {
 //        	len = EIBSendAPDU(bus.con, raw.len(), &raw[0]);
 //	    }
@@ -351,6 +507,9 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 
 #[tokio::main]
 async fn main() {
+
+    create_knx_frame_onoff(0x0104, true);
+	
 //    let buf = &[10u8, 20, 20, 0];
 //     let con: *mut libc::c_void;
 //     let bus = Bus { value: 123., con: std::ptr::null_mut() };
