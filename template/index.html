@@ -18,64 +18,73 @@
     <!-- <hr/> -->
     <br/>
     <div id="till">
+      Till:
       <div class="temperature">{{ till }} &deg;C </div>
+      <input type="submit" value="aus" onclick="myFunction('Switch OgTillLight 0');" />
+      <input type="submit" value="an" onclick="myFunction('Switch OgTillLight 1');" />
+
 <!--      <input type="submit" value="aus" onclick="myFunction('Moin');" >
       <input type="submit" value="an" onclick="myFunction('Hallo');" > -->
     </div>
 
+    <br/>
+    <div id="eg_flur">
+      Flur:
+      <input type="submit" value="Aus" onclick="myFunction('Dimmer EgFlurSpots 0');" />
+      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgFlurSpots 1');" />
+      <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgFlurSpots 64');" />
+      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgFlurSpots 255');" />
+	</div>
+	
+    <br/>
 <!--    <div id="wohnzimmer">
       <input type="submit" value="aus" onclick="myFunction('Moin');" >
       <input type="submit" value="an" onclick="myFunction('Hallo');" >
     </div> -->
 
-    <div id="A">
-      A:
-      <input type="submit" value="aus" onclick="myFunction('A-off');" >
-      <input type="submit" value="an" onclick="myFunction('A-on');" >
+    <div id="eg_wohn">
+      Spots:
+      <input type="submit" value="Aus" onclick="myFunction('Dimmer EgWohnSpots 0');" />
+      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgWohnSpots 1');" />
+      <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgWohnSpots 64');" />
+      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgWohnSpots 255');" />
+
+      Mitte:
+      <input type="submit" value="Aus" onclick="myFunction('Dimmer EgWohnMitte 0');" />
+      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgWohnMitte 1');" />
+      <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgWohnMitte 64');" />
+      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgWohnMitte 255');" />
     </div>
 
-    <div id="B">
-      B:
-      <input type="submit" value="aus" onclick="myFunction('B-off');" >
-      <input type="submit" value="an" onclick="myFunction('B-on');" >
+    <br/>
+    
+   <div id="eg_arbeit">
+      Arbeit Spots:
+      <input type="submit" value="Aus" onclick="myFunction('Dimmer EgArbeitSpots 0');" />
+      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgArbeitSpots 1');" />
+      <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgArbeitSpots 64');" />
+      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgArbeitSpots 255');" />
+
+      Arbeit Lampe:
+      <input type="submit" value="aus" onclick="myFunction('Switch EgArbeitLight 0');" />
+      <input type="submit" value="an" onclick="myFunction('Switch EgArbeitLight 1');" >
+   </div>
+
+   <br/>
+
+    <div id="eg_wc">
+      WC:
+      <input type="submit" value="aus" onclick="myFunction('Switch EgWcLight 0');" />
+      <input type="submit" value="an" onclick="myFunction('Switch EgWcLight 1');" >
     </div>
 
-    <div id="C">
-      C:
-      <input type="submit" value="aus" onclick="myFunction('C-off');" >
-      <input type="submit" value="an" onclick="myFunction('C-on');" >
-    </div>
+    <br/>
 
-    <div id="D">
-      D:
-      <input type="submit" value="aus" onclick="myFunction('D-off');" >
-      <input type="submit" value="an" onclick="myFunction('D-on');" >
+    <div id="eg_kueche">
+      K&uuml;che:
+      <input type="submit" value="aus" onclick="myFunction('Switch EgKueche 0');" />
+      <input type="submit" value="an" onclick="myFunction('Switch EgKueche 1');" >
     </div>
-
-    <div id="E">
-      E:
-      <input type="submit" value="aus" onclick="myFunction('E-off');" >
-      <input type="submit" value="an" onclick="myFunction('E-on');" >
-    </div>
-
-    <div id="F">
-      F:
-      <input type="submit" value="aus" onclick="myFunction('F-off');" >
-      <input type="submit" value="an" onclick="myFunction('F-on');" >
-    </div>
-
-    <div id="G">
-      G:
-      <input type="submit" value="aus" onclick="myFunction('G-off');" >
-      <input type="submit" value="an" onclick="myFunction('G-on');" >
-    </div>
-
-    <div id="H">
-      H:
-      <input type="submit" value="aus" onclick="myFunction('H-off');" >
-      <input type="submit" value="an" onclick="myFunction('H-on');" >
-    </div>
-
 
       <!-- <img src="img/thermometer.png" width="10%"/> -->
     <!-- <hr/> -->

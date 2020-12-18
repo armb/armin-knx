@@ -16,6 +16,7 @@ dependencies = [
  "handlebars",
  "hyper",
  "libc",
+ "regex",
  "serde",
  "serde_json",
  "tokio",

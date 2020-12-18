@@ -136,26 +136,17 @@ async fn hello_world(req: Request<Body>,
 		     remote_addr: SocketAddr,
 		     wetter: Arc<Mutex<Wetter>>,
 		     tx: Sender<KnxPacket>) -> Result<Response<Body>, Infallible> {
-    // let f = std::fs::File::open("/tmp/foo");
-    // if f.is_err() {
-    //     return Ok(Response::builder().status(400).body("ERROR 0".into()).unwrap());
-    // }
-    //
-    // let mut data = std::string::String::new();
-    // if f.unwrap().read_to_string(&mut data).is_err() {
-    //     return Ok(Response::builder().status(300).body("ERROR 1".into()).unwrap());
-    // }
-//    println!("METHOD: {:?}", &req.method());
     let m = req.method().clone();
 
-    //    println!("BODY: {:?}",body_str);
     if m == hyper::Method::PUT {
         let bytes = body::to_bytes(req.into_body()).await.expect("failed!");
         let body_str = String::from_utf8(bytes.to_vec()).expect("nody was not valid utf8");
-        let a = KnxPacket { a: body_str }; //.to_owned() };
+        let a = KnxPacket { a: body_str };
         tx.send(a).expect("tx queue full");
     } else if m == hyper::Method::GET {
         let mut handlebars = handlebars::Handlebars::new();
+
+	
         for a in &[
             "index.html",
             "default-style.css",
@@ -231,8 +222,68 @@ struct KnxPacket {
     a: String,
 }
 
+#[derive(Debug)]
+enum Signal {
+    // Error,
+    OgTillLight,
+    EgFlurSpots,
+    EgKueche,
+    EgWohnSpots,
+    EgWohnMitte,
+    EgArbeitSpots,
+    EgArbeitLight,
+    EgWcLight,
+}
+impl FromStr for Signal {
+    type Err = ();
+    fn from_str(input: &str) -> Result<Signal, Self::Err> {
+    match input {
+          "OgTillLight" => Ok(Signal::OgTillLight),
+          "EgFlurSpots" => Ok(Signal::EgFlurSpots),
+	  "EgKueche" => Ok(Signal::EgKueche),
+    	  "EgWohnSpots" => Ok(Signal::EgWohnSpots),
+      	  "EgWohnMitte" => Ok(Signal::EgWohnMitte),
+      	  "EgArbeitSpots" => Ok(Signal::EgArbeitSpots),
+          "EgArbeitLight" => Ok(Signal::EgArbeitLight),
+      	  "EgWcLight" => Ok(Signal::EgWcLight),
+	  _ => Err( () ),
+    }
+    }
+}
+
+
+#[derive(Debug)]
+enum WebCommand {
+   Error,
+   Dimmer { signal: Signal, value: u8 },
+   Switch { signal: Signal, value: bool },
+}
+
 use std::sync::mpsc::channel;
 use std::time::SystemTime;
+
+fn command_from_string( string: String) -> WebCommand
+{
+   let re_dimmer = regex::Regex::new(r"^Dimmer (?P<signal>[.[:word:]]+) (?P<value>[[:digit:]]+)$").unwrap();
+   let caps_dimmer = re_dimmer.captures(&string);
+   if let Some(cmd) = caps_dimmer {
+      let signal = match Signal::from_str(&cmd["signal"]) { Ok(x) => x, _ => return WebCommand::Error };
+      let value = match cmd["value"].parse::<u8>() { Ok(i) => i, Err(_) => return WebCommand::Error };
+      println!("Dimmer: {:?} -> {:?}", signal, value);
+      return WebCommand::Dimmer{ signal: signal, value: value };
+   }
+
+   let re_switch = regex::Regex::new(r"^Switch (?P<signal>[.[:word:]]+) (?P<value>1|0)$").unwrap();
+   let caps_switch = re_switch.captures(&string);
+   if let Some(cmd) = caps_switch {
+     let signal = match Signal::from_str(&cmd["signal"]) { Ok(x) => x, _ => return WebCommand::Error };
+     let value = if &cmd["value"] == "1" { true } else { false };
+     println!("switch: {:?} : {:?}", &signal, &value);
+     return WebCommand::Switch{ signal: signal, value: value };
+   }
+
+   WebCommand::Error
+}
 
 //function
 fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
@@ -249,167 +300,37 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
     knx_ip.connect("224.0.23.12:3671"  ).expect("connect() failed");
     // u.connect("239.192.39.238:51000"  ).expect("connect() failed");
 
+ 
 
     // wait for send-requests from other threads
     loop {
 	let packet = rx.recv().unwrap();
-	if packet.a == "A-on" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0100, true) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "B-on" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0101, true) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "C-on" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0102, true) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "D-on" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0103, true) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "E-on" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0104, true) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "F-on" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0105, true) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "G-on" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0106, true) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "H-on" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0107, true) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "A-off" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0100, false) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "B-off" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0101, false) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "C-off" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0102, false) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "D-off" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0103, false) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "E-off" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0104, false) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "F-off" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0105, false) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "G-off" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0106, false) );
-	    println!("send(): {:?}", s);
-	}
-	if packet.a == "H-off" {
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0107, false) );
-	    println!("send(): {:?}", s);
-	}	    
-	if packet.a == "Moin" {
-	    // send command to switch light off (Till)
-	    let _till_raw_off = [
-	        // knx/ip header
-		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
+	println!("user command: {:?}", &packet);
+	let command = command_from_string( packet.a );
 
-	        0x29, // data indication
-	        0x00, // extra-info
-	        0xbc, //low-prio,
-	        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-	        0x12, 0x7e, // src: 0x127e -> 1.2.126
-	        0x04, 0x01, // dst: 0.4.1:   Licht Kinderzimmer
-	        0x01, // len
-	        0x00, // 'TPCI'
-	        0x80 // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
-	        ];
-	    
-	    let _spots_raw_50 = [
-	        // knx/ip header
-		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x12)
-	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
+        let frame = match command {
+        WebCommand::Dimmer { signal: Signal::EgWohnSpots, value: x } => create_knx_frame_dimmer( 0x0201, x),
+	WebCommand::Dimmer { signal: Signal::EgWohnMitte, value: x } => create_knx_frame_dimmer( 0x0202, x),
+	WebCommand::Dimmer { signal: Signal::EgArbeitSpots, value: x } => create_knx_frame_dimmer( 0x0203, x),		WebCommand::Switch { signal: Signal::EgArbeitLight, value: x } => create_knx_frame_onoff( 0x0402, x),
+	WebCommand::Switch { signal: Signal::EgWcLight, value: x } => create_knx_frame_onoff( 0x0101, x),
+	WebCommand::Switch { signal: Signal::EgKueche, value: x } => create_knx_frame_onoff( 0x0107, x),
 
-	        0x29, // data indication
-	        0x00, // extra-info
-	        0xbc, //low-prio,
-	        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-	        0x12, 0x7e, // src: 0x127e -> 1.2.126
-	        0x02, 0x01, // dst: 0.4.1:   Licht Kinderzimmer
-	        0x02, // len
-	        0x00, // 'TPCI'
-	        0x80, // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
-		0x80,
-	    ];
+	WebCommand::Switch { signal: Signal::OgTillLight, value: x } => create_knx_frame_onoff( 0x0401, x),
+	WebCommand::Dimmer { signal: Signal::EgFlurSpots, value: x } => create_knx_frame_dimmer( 0x0200 + 98, x),
 
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0104, true) );
-	    // let raw = [ 0x10, 0x06, 0x00, 0x0f, 0x02, 0x01, 0x29, 0xbc, 0x12, 0x04, 0x04, 0x01, 0xd1, 0x00, 0x80 ];
+	
+	_ => { println!("command unhandled: {:?}", command); continue; }
+	};
 
-//	    let raw = [ 0x10u8, 0x06 ,0x00 ,0x10 ,0x02 ,0x01 ,0x29 ,0xBC ,0x12 ,0x02 ,0x02 ,0x62 ,0xD2 ,0x00 ,0x80 ,0x28];
-//	    let s = knx_ip.send(&spots_raw_50).expect("send() failed");
-	    println!("send(): {:?}", s);
-//	    u.send(&raw).expect("send() failed");
-//       	     unsafe {
-//	        len = EIBSendAPDU(bus.con, raw.len(), &raw[0]);
-//	     }
+        match knx_ip.send( &frame ) {
+	      Ok(_) => (),
+	      Err(_) => println!("send() failed."),
+	      }
 
-	}
-	else if packet.a == "Hallo" {
-	    // send command to switch light on (Till)
-	    	    let _till_raw_on = [
-        	        // knx/ip header
-        	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
-
-        	        0x29, // data indication
-        	        0x00, // extra-info
-        	        0xbc, //low-prio,
-        	        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-        	        0x12, 0x7e, // src: 0x127e -> 1.2.126
-        	        0x04, 0x01, // dst: 0.4.1:   Licht Kinderzimmer
-        	        0x01, // len
-        	        0x00, // 'TPCI'
-        	        0x81 // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
-        	    ];
-
-	    	let _spots_raw_25 = [
-	        // knx/ip header
-		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x12)
-	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
-
-	        0x29, // data indication
-	        0x00, // extra-info
-	        0xbc, //low-prio,
-	        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-	        0x12, 0x7e, // src: 0x127e -> 1.2.126
-	        0x02, 0x01, // dst: 0.4.1:   Licht Kinderzimmer
-	        0x02, // len
-	        0x00, // 'TPCI'
-	        0x80, // 'ACPI': Group-Value-Write (0x20) | Off (0x00)
-		0x40,
-	        ];
-
-	    let s = knx_ip.send( &create_knx_frame_onoff( 0x0104, false) );
-
-//	    let s = knx_ip.send(&spots_raw_25).expect("send() failed");
-	    println!("send(): {:?}", s);
-//            unsafe {
-//        	len = EIBSendAPDU(bus.con, raw.len(), &raw[0]);
-//	    }
-	}
-
-	//println!("Packet: {:?}", packet);
     } // loop
 }
+
+
 
 
 fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
@@ -423,8 +344,8 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 
     loop {
         let mut buf = [0_u8; 32];
-        let (len, addr) = u.recv_from(&mut buf).expect("recv_from() failed.");
-        print!("Got {} bytes from {}: ", len, addr);
+        let (len, _addr) = u.recv_from(&mut buf).expect("recv_from() failed.");
+//        print!("Got {} bytes from {}: ", len, addr);
         let mut hex_string = std::string::String::new();
         for a in buf[0..len].iter() {
             // print!("{:02X} ", a);
@@ -508,23 +429,6 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 #[tokio::main]
 async fn main() {
 
-    create_knx_frame_onoff(0x0104, true);
-	
-//    let buf = &[10u8, 20, 20, 0];
-//     let con: *mut libc::c_void;
-//     let bus = Bus { value: 123., con: std::ptr::null_mut() };
-
-//    unsafe {
-	//con = malloc(100);
-//	bus.con = EIBSocketLocal(b"/run/knx\0".as_ptr());
-	//
-	// let con = EIBSocketURL("ip::3671".as_ptr());
-//	EIBClose(con);
-// 	if bus.con == std::ptr::null_mut() { panic!("no connection to knxd"); }
-
-//	let _l = EIBSendAPDU(bus.con, buf.len(), &buf[0]);
-//    }
-    // let addr = std::net::SocketAddrV4::from_str("0.0.0.0:1234").unwrap();
     let shared_data = Arc::new(Mutex::new(Wetter::new() ));
 
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
@@ -537,15 +441,11 @@ async fn main() {
     let bus_data = shared_data.clone();
     let (tx, rx) = channel();
 
-//    let u1 = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
-
-
-//    let u1 = u.try_clone().expect("try_clone() failed");
    let _s = std::thread::spawn(move || bus_send_thread(rx));
     let _j = std::thread::spawn(move || bus_receive_thread(&u, bus_data));
 
 
-    // We'll bind to 127.0.0.1:3000
+
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
     // A `Service` is needed for every connection, so this
     // creates one from our `hello_world` function.
