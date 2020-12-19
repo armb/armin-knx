@@ -204,6 +204,8 @@ async fn hello_world(req: Request<Body>,
             },
             _ => ()
         }
+
+        eprintln!("not found: '{:?}'", req.uri());
     }
     Ok(Response::builder().status(hyper::StatusCode::BAD_REQUEST).body("Bad request.".into()).unwrap())
 }
