@@ -3,45 +3,33 @@ use std::str::FromStr;
 use std::net::{TcpStream, SocketAddr};
 use std::io::{Write, BufRead};
 
+use std::collections::HashMap;
 use std::string::String;
 use std::convert::Infallible;
 use hyper::body;
 use hyper::{Body, Request, Response, Server};
 
 
-//use std::sync::mpsc::channel()
-// for read_into_string()
-
-// #[repr(C)] pub struct EIBConnection { }
-
-// #[link(name="eibclient")]
-
-// extern {
-//     fn _EIBSocketURL(url: *const u8) -> *mut libc::c_void;
-//     fn EIBSocketLocal(path: *const u8) -> *mut libc::c_void;
-//     fn _malloc(len: i64) -> *mut libc::c_void;
-//     fn _EIBClose(conn: *mut libc::c_void) -> i64;
-//     fn _EIBComplete(conn: *mut libc::c_void) -> i64;
-//     fn EIBSendAPDU(conn: *mut libc::c_void, len: usize , buf: *const u8) -> i64;
-// }
-
 #[derive(Debug, Copy, Clone)]
 struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
-
-#[derive(Debug, Copy, Clone)]
-struct Measurement { received: Received, value: f32 }
-impl Measurement {
-    pub fn new() -> Self {
+impl Received {
+    pub fn _new() -> Self {
         Self {
-            received: Received {
-                time: SystemTime::now(),
-                source: EibAddr(0, 0, 0),
-                dest: EibAddr(0, 0, 0)
-            },
-            value: 0.0
+            time: SystemTime::now(),
+            source: EibAddr(0, 0, 0),
+            dest: EibAddr(0, 0, 0)
         }
     }
 }
+
+
+#[derive(Debug, Copy, Clone)]
+enum Measurement {
+    _Error,
+    Undefined,
+    Temperature(Received, f32),
+}
+
 
 #[derive(Debug)]
 struct DimmerZielwert { received: Received, value: u8 }
@@ -67,13 +55,19 @@ struct Wetter {
 impl Wetter {
     pub fn new() -> Self {
         Self {
-            till: Measurement::new(),
+            till: Measurement::Undefined,
             a: "".to_string(),
             b: "".to_string(),
             c: "".to_string(),
             lampe: "".to_string()
         }
     }
+}
+
+#[derive(Debug, Clone)]
+struct HttpData {
+    index: String,
+    uri_data: HashMap<String, Vec<u8>>,
 }
 
 
@@ -95,10 +89,8 @@ fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Vec<u8>
     v.push( 1u8 ); //len
     v.push( 0x00 ); // 'TPCI'
     if onoff { v.push( 0x81u8 ); } else { v.push( 0x80 ); }
-
     println!(" onoff: {:X?}", v);
-
-    (v)
+    v
 
 }
 
@@ -125,14 +117,16 @@ fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Vec<u8>
 
     println!(" helligkeitswert: {:X?}", v);
 
-    (v)
-
+    v
 }
 
 
 
 use std::sync::mpsc::Sender;
+// use crate::Measurement;
+
 async fn hello_world(req: Request<Body>,
+             http_data: &HttpData,
 		     remote_addr: SocketAddr,
 		     wetter: Arc<Mutex<Wetter>>,
 		     tx: Sender<KnxPacket>) -> Result<Response<Body>, Infallible> {
@@ -150,16 +144,16 @@ async fn hello_world(req: Request<Body>,
         for a in &[
             "index.html",
             "default-style.css",
-//          "img/house.png",
-//          "img/thermometer.png",
-//	    "img/light-on.png",
-//	    "img/light-off.png",
         ] {
             let uri = format!("/{}", a);
             let path = format!("template/{}", a);
             handlebars.register_template_file(&uri, path).expect(format!("Could not register '{}'", a).as_str());
         }
+
+
         handlebars.register_template_file("/", "template/index.html").expect("Could not register root uri");
+
+
 
 
         let mut _w = wetter.lock().unwrap();
@@ -187,16 +181,29 @@ async fn hello_world(req: Request<Body>,
             temp_b: _w.b.clone(),
             temp_c: _w.c.clone(),
             lampe: _w.lampe.clone(),
-            till: ((_w.till.value * 10f32).round() / 10f32).to_string()
+            till: match _w.till { Measurement::Temperature(_, t) => t.to_string(), _ => "".to_string() },
         };
 
-
-        let output = handlebars.render(req.uri().to_string().as_str(), &info);
-        if output.is_err() {
-            eprintln!("GET '{:?}': could not render template", req.uri());
-            return Ok(Response::builder().status(hyper::StatusCode::NOT_FOUND).body("Not found.".into()).unwrap());
+        if handlebars.has_template(req.uri().to_string().as_str()) {
+            let output = handlebars.render(req.uri().to_string().as_str(), &info);
+            if output.is_err() {
+                eprintln!("GET '{:?}': could not render template", req.uri());
+                return Ok(Response::builder().status(hyper::StatusCode::NOT_FOUND).body("Not found.".into()).unwrap());
+            } else {
+                return Ok(Response::builder().status(200).body(output.unwrap().into()).unwrap());
+            }
         }
-        return Ok(Response::builder().status(200).body(output.unwrap().into()).unwrap());
+
+        let body = http_data.uri_data.get(req.uri().to_string().as_str());
+
+        // let b: hyper::Body = hyper::Body::from(body.unwrap());
+        match body {
+            Some(b) => {
+                let c = b.to_vec();
+                return Ok(Response::builder().status(200).body(c.into()).unwrap());
+            },
+            _ => ()
+        }
     }
     Ok(Response::builder().status(hyper::StatusCode::BAD_REQUEST).body("Bad request.".into()).unwrap())
 }
@@ -403,20 +410,19 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
             };
 
 
-            let val = Measurement { received: r, value: value };
+            let val = Measurement::Temperature (r.clone(), value);
             let mut v = data.lock().unwrap();
 
-	        if val.received.dest == EibAddr(0, 3, 4 ) {
+	        if r.dest == EibAddr(0, 3, 4 ) {
 		        // gruppenadresse: Temperatur Till
-		        v.b = val.value.to_string();
+		        v.b = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
                 v.till = val; // copy 'Measurement'
 	        }
-	        if val.received.dest == EibAddr(0, 3, 0 ) {
+	        if r.dest == EibAddr(0, 3, 0 ) {
 		        // gruppenadresse: Temperatur Schrankzimmer
-		        v.c = val.value.to_string();
-	        }
+                v.c = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
+            }
 
-            v.a = val.value.to_string();
             println!("{:?}\n", val);
             let line = format!("{:?}\n", val);
             logfile.write_all(line.as_bytes()).expect("could not append to buffer");
@@ -428,6 +434,24 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 
 #[tokio::main]
 async fn main() {
+
+    let mut http_data = HttpData {
+        index: "".to_string(),
+        uri_data: HashMap::new(),
+    };
+
+    http_data.uri_data.insert(
+        "/img/house.png".to_string(),
+        std::fs::read("img/house.png").unwrap());
+    http_data.uri_data.insert(
+        "/img/bulb-off.png".to_string(),
+        std::fs::read("img/bulb-off.png").unwrap());
+    http_data.uri_data.insert(
+        "/img/bulb-on.png".to_string(),
+        std::fs::read("img/bulb-on.png").unwrap());
+    http_data.uri_data.insert(
+        "/img/thermometer.png".to_string(),
+        std::fs::read("img/thermometer.png").unwrap());
 
     let shared_data = Arc::new(Mutex::new(Wetter::new() ));
 
@@ -441,7 +465,7 @@ async fn main() {
     let bus_data = shared_data.clone();
     let (tx, rx) = channel();
 
-   let _s = std::thread::spawn(move || bus_send_thread(rx));
+    let _s = std::thread::spawn(move || bus_send_thread(rx));
     let _j = std::thread::spawn(move || bus_receive_thread(&u, bus_data));
 
 
@@ -456,17 +480,19 @@ async fn main() {
     let make_svc = make_service_fn(|socket: &AddrStream| {
         // this function is executed for each incoming connection
         let remote_addr = socket.remote_addr();
-	let connection_tx = tx.clone();
+        let http_data = http_data.clone();
+        let connection_tx = tx.clone();
         let connection_data = shared_data.clone(); //to_owned();
         // create a service answering the requests
         async move {
             Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
+                let http_data = http_data.clone();
                 let request_data = connection_data.clone();
-		let request_tx = connection_tx.clone();
+		        let request_tx = connection_tx.clone();
                 // println!("request_data: {:?}", request_data);
                 async move {
                     // this function is executed for each request inside a connection
-                    hello_world(req, remote_addr, request_data, request_tx).await
+                    hello_world(req, &http_data, remote_addr, request_data, request_tx).await
                 }
             }))
         }
