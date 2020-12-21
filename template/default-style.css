@@ -1,4 +1,5 @@
 body {
+    font-size: 30pt;
     margin: 10px;
     background-color: darkslategrey;
     color: gray;
@@ -11,12 +12,10 @@ body {
 
 #till {
     background-color: #402020;
-    font-size: x-large;
     vertical-align: center;
 }
 
 #wohnzimmer {
     background-color: #202040;
-    font-size: x-large;
     vertical-align: center;
 }
