@@ -10,12 +10,15 @@
 	  //document.getElementById("demo").innerText = "BUTTON";
       }
     </script>
+      <script src="functions.js"></script>
   </head>
   <body>
    <img src="img/house.png" width="100em"/>
+   <br/>
     <!-- <hr/> -->
-    <br/>
-    <div id="till">
+   <div id="message">...</div>
+   <br/>
+   <div id="till">
       Till:
       <div class="temperature"> <img src="img/thermometer.png" width="10em"/> {{ till }} &deg;C </div>
 
@@ -28,7 +31,7 @@
 
     <br/>
     <div id="eg_flur">
-      Flur:
+      Flur:<br/>
       <input type="submit" value="Aus" onclick="myFunction('Dimmer EgFlurSpots 0');" />
       <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgFlurSpots 1');" />
       <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgFlurSpots 64');" />
@@ -42,13 +45,13 @@
     </div> -->
 
     <div id="eg_wohn">
-      Spots:
+      Spots:<br/>
       <input type="submit" value="Aus" onclick="myFunction('Dimmer EgWohnSpots 0');" />
       <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgWohnSpots 1');" />
       <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgWohnSpots 64');" />
-      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgWohnSpots 255');" />
+      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgWohnSpots 255');" /><br/>
 
-      Mitte:
+        Mitte:</br>
       <input type="submit" value="Aus" onclick="myFunction('Dimmer EgWohnMitte 0');" />
       <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgWohnMitte 1');" />
       <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgWohnMitte 64');" />
@@ -58,13 +61,13 @@
     <br/>
     
    <div id="eg_arbeit">
-      Arbeit Spots:
+      Arbeit Spots:<br/>
       <input type="submit" value="Aus" onclick="myFunction('Dimmer EgArbeitSpots 0');" />
       <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgArbeitSpots 1');" />
       <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgArbeitSpots 64');" />
-      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgArbeitSpots 255');" />
+      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgArbeitSpots 255');" /><br/>
 
-      Arbeit Lampe:
+      Arbeit Lampe:<br/>
       <input type="submit" value="aus" onclick="myFunction('Switch EgArbeitLight 0');" />
       <input type="submit" value="an" onclick="myFunction('Switch EgArbeitLight 1');" >
    </div>
@@ -72,7 +75,7 @@
    <br/>
 
     <div id="eg_wc">
-      WC:
+      WC:<br/>
       <input type="submit" value="aus" onclick="myFunction('Switch EgWcLight 0');" />
       <input type="submit" value="an" onclick="myFunction('Switch EgWcLight 1');" >
     </div>
@@ -80,7 +83,7 @@
     <br/>
 
     <div id="eg_kueche">
-      K&uuml;che:
+      K&uuml;che:<br/>
       <input type="submit" value="aus" onclick="myFunction('Switch EgKueche 0');" />
       <input type="submit" value="an" onclick="myFunction('Switch EgKueche 1');" >
     </div>

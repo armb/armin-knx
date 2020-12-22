@@ -1,22 +1,41 @@
 body {
-    margin: 10px;
     background-color: darkslategrey;
     color: gray;
     text-align: center;
+    max-width: 20em;
+width: 100%;
 }
 
 .temperature {
 //     background-color: white;
 }
 
+#message {
+    color: black;
+}
+
 #till {
     background-color: #402020;
     font-size: x-large;
-    vertical-align: center;
 }
 
-#wohnzimmer {
+#eg_wohn, #eg_flur {
     background-color: #202040;
     font-size: x-large;
-    vertical-align: center;
+}
+
+#eg_arbeit {
+    background-color: #204020;
+    font-size: x-large;
+}
+
+
+#eg_wc {
+    background-color: #203535   ;
+    font-size: x-large;
+}
+
+#eg_kueche {
+    background-color: #303030;
+    font-size: x-large;
 }
