@@ -122,6 +122,36 @@ fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Vec<u8>
 
 
 
+
+// 'full': entspricht wert, der fuer vollstaendiges schliessen gesendet werden muss, z.B. 205
+fn create_knx_frame_rollo(grp: u16, percent: u8, full: u8) -> Vec<u8>
+{
+    let t = percent as u16 * full as u16 / 100;
+    let tx_raw = if t > 255 { 255 } else { t as u8 };
+    let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
+    let mut v = vec![
+        // knx/ip header
+        // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
+        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
+
+        0x29, // data indication (rollo: 0x2e)
+        0x00, // extra-info
+        0xbc, //low-prio,
+        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+        0x12, 0x7e  // src: 0x127e -> 1.2.126
+    ];
+    v.append( &mut dst );
+    v.push( 2u8 ); //len
+    v.push( 0x00 ); // 'TPCI'
+    v.push( 0x80 );
+    v.push( tx_raw  );
+
+    println!(" rollo-wert: {:X?}", v);
+
+    v
+}
+
+
 use std::sync::mpsc::Sender;
 // use crate::Measurement;
 
@@ -242,6 +272,7 @@ enum Signal {
     EgArbeitSpots,
     EgArbeitLight,
     EgWcLight,
+    EgWohnRolloEinzel,
 }
 impl FromStr for Signal {
     type Err = ();
@@ -249,12 +280,13 @@ impl FromStr for Signal {
     match input {
           "OgTillLight" => Ok(Signal::OgTillLight),
           "EgFlurSpots" => Ok(Signal::EgFlurSpots),
-	  "EgKueche" => Ok(Signal::EgKueche),
+           "EgKueche" => Ok(Signal::EgKueche),
     	  "EgWohnSpots" => Ok(Signal::EgWohnSpots),
       	  "EgWohnMitte" => Ok(Signal::EgWohnMitte),
       	  "EgArbeitSpots" => Ok(Signal::EgArbeitSpots),
           "EgArbeitLight" => Ok(Signal::EgArbeitLight),
       	  "EgWcLight" => Ok(Signal::EgWcLight),
+          "EgWohnRolloEinzel" => Ok(Signal::EgWohnRolloEinzel),
 	  _ => Err( () ),
     }
     }
@@ -263,9 +295,10 @@ impl FromStr for Signal {
 
 #[derive(Debug)]
 enum WebCommand {
-   Error,
-   Dimmer { signal: Signal, value: u8 },
-   Switch { signal: Signal, value: bool },
+    Error,
+    Dimmer { signal: Signal, value: u8 },
+    Switch { signal: Signal, value: bool },
+    RolloWert { signal: Signal, value: u8 },
 }
 
 use std::sync::mpsc::channel;
@@ -290,6 +323,15 @@ fn command_from_string( string: String) -> WebCommand
      println!("switch: {:?} : {:?}", &signal, &value);
      return WebCommand::Switch{ signal: signal, value: value };
    }
+
+    let re_switch = regex::Regex::new(r"^RolloWert (?P<signal>[.[:word:]]+) (?P<value>[[:digit:]]+)%$").unwrap();
+    let caps_switch = re_switch.captures(&string);
+    if let Some(cmd) = caps_switch {
+        let signal = match Signal::from_str(&cmd["signal"]) { Ok(x) => x, _ => return WebCommand::Error };
+        let value = match cmd["value"].parse::<u8>() { Ok(i) => i, Err(_) => return WebCommand::Error };
+        println!("rollo: {:?} : {:?}", &signal, &value);
+        return WebCommand::RolloWert{ signal: signal, value: value };
+    }
 
    WebCommand::Error
 }
@@ -318,21 +360,27 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
 	let command = command_from_string( packet.a );
 
         let frame = match command {
-        WebCommand::Dimmer { signal: Signal::EgWohnSpots, value: x } => create_knx_frame_dimmer( 0x0201, x),
-	WebCommand::Dimmer { signal: Signal::EgWohnMitte, value: x } => create_knx_frame_dimmer( 0x0202, x),
-	WebCommand::Dimmer { signal: Signal::EgArbeitSpots, value: x } => create_knx_frame_dimmer( 0x0203, x),		WebCommand::Switch { signal: Signal::EgArbeitLight, value: x } => create_knx_frame_onoff( 0x0402, x),
-	WebCommand::Switch { signal: Signal::EgWcLight, value: x } => create_knx_frame_onoff( 0x0101, x),
-	WebCommand::Switch { signal: Signal::EgKueche, value: x } => create_knx_frame_onoff( 0x0107, x),
+            WebCommand::Dimmer { signal: Signal::EgWohnSpots, value: x } => create_knx_frame_dimmer( 0x0201, x),
+            WebCommand::Dimmer { signal: Signal::EgWohnMitte, value: x } => create_knx_frame_dimmer( 0x0202, x),
+            WebCommand::Dimmer { signal: Signal::EgArbeitSpots, value: x } => create_knx_frame_dimmer( 0x0203, x),
+            WebCommand::Switch { signal: Signal::EgArbeitLight, value: x } => create_knx_frame_onoff( 0x0402, x),
+            WebCommand::Switch { signal: Signal::EgWcLight, value: x } => create_knx_frame_onoff( 0x0101, x),
+            WebCommand::Switch { signal: Signal::EgKueche, value: x } => create_knx_frame_onoff( 0x0107, x),
 
-	WebCommand::Switch { signal: Signal::OgTillLight, value: x } => create_knx_frame_onoff( 0x0401, x),
-	WebCommand::Dimmer { signal: Signal::EgFlurSpots, value: x } => create_knx_frame_dimmer( 0x0200 + 98, x),
+            WebCommand::Switch { signal: Signal::OgTillLight, value: x }
+            => create_knx_frame_onoff( 0x0401, x),
 
-	
-	_ => { println!("command unhandled: {:?}", command); continue; }
+            WebCommand::Dimmer{ signal: Signal::EgFlurSpots, value: x }
+            => create_knx_frame_dimmer( 0x0200 + 98, x),
+
+            WebCommand::RolloWert { signal: Signal::EgWohnRolloEinzel, value: x}
+            => create_knx_frame_rollo( 0x0010 /* 0/0/16 */, x,  200),
+
+            _ => { println!("command unhandled: {:?}", command); continue; }
 	};
 
         match knx_ip.send( &frame ) {
-	      Ok(_) => (),
+	      Ok(x) => { println!("send(): {}", x); () },
 	      Err(_) => println!("send() failed."),
 	      }
 
