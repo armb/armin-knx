@@ -10,86 +10,141 @@
 	  //document.getElementById("demo").innerText = "BUTTON";
       }
     </script>
-      <script src="functions.js"></script>
+    <!-- <script src="functions.js"></script> -->
   </head>
   <body>
-   <img src="img/house.png" width="100em"/>
+   <img src="img/house.png" width="400"/>
    <br/>
     <!-- <hr/> -->
-   <div id="message">...</div>
+   <div id="message">{{ flur_brightness }}</div>
    <br/>
-   <div id="till">
+   <div id="till" class="room">
       Till:
-      <div class="temperature"> <img class="thermometer" src="img/thermometer.png" width="10em"/> {{ till }} &deg;C </div>
+      <div class="temperature"> <img class="thermometer" src="img/thermometer.png" width="25"/> {{ till }} &deg;C </div>
 
-      <input type="submit" value="aus" onclick="myFunction('Switch OgTillLight 0');" />
-      <input type="submit" value="an" onclick="myFunction('Switch OgTillLight 1');" />
-
-<!--      <input type="submit" value="aus" onclick="myFunction('Moin');" >
-      <input type="submit" value="an" onclick="myFunction('Hallo');" > -->
+      <img src="img/bulb-on.png" width="50"/>
+      <input type="submit" value="Aus" onclick="myFunction('Switch OgTillLight 0');" />
+      <input type="submit" value="An" onclick="myFunction('Switch OgTillLight 1');" />
     </div>
 
     <br/>
-    <div id="eg_flur">
+    <div id="eg_flur" class="room">
       Flur:<br/>
+      <img src="img/bulb-on.png" width="50"/>
       <input type="submit" value="Aus" onclick="myFunction('Dimmer EgFlurSpots 0');" />
-      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgFlurSpots 1');" />
+      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgFlurSpots 10');" />
       <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgFlurSpots 64');" />
       <input type="submit" value="Hell" onclick="myFunction('Dimmer EgFlurSpots 255');" />
 	</div>
 	
     <br/>
-<!--    <div id="wohnzimmer">
-      <input type="submit" value="aus" onclick="myFunction('Moin');" >
-      <input type="submit" value="an" onclick="myFunction('Hallo');" >
-    </div> -->
 
-    <div id="eg_wohn">
+    <div id="eg_wohn" class="room">
       Spots:<br/>
+      <img src="img/bulb-on.png" width="50"/>
       <input type="submit" value="Aus" onclick="myFunction('Dimmer EgWohnSpots 0');" />
-      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgWohnSpots 1');" />
+      <input type="submit" value="Dunkel (20)" onclick="myFunction('Dimmer EgWohnSpots 20');" />
+      <input type="submit" value="Dunkel (25)" onclick="myFunction('Dimmer EgWohnSpots 25');" />
+      <input type="submit" value="Dunkel (30)" onclick="myFunction('Dimmer EgWohnSpots 30');" />
+
       <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgWohnSpots 64');" />
       <input type="submit" value="Hell" onclick="myFunction('Dimmer EgWohnSpots 255');" /><br/>
 
-        Mitte:</br>
+      Sofa:<br/>
+      <img src="img/bulb-on.png" width="50"/>
       <input type="submit" value="Aus" onclick="myFunction('Dimmer EgWohnMitte 0');" />
-      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgWohnMitte 1');" />
+      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgWohnMitte 10');" />
       <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgWohnMitte 64');" />
-      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgWohnMitte 255');" />
+      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgWohnMitte 255');" /><br/>
 
-        Einzel:</br>
-        <input type="submit" value="Auf" onclick="myFunction('RolloWert EgWohnRolloEinzel 0%');" />
-        <input type="submit" value="Halb" onclick="myFunction('RolloWert EgWohnRolloEinzel 40%');" />
-        <input type="submit" value="85%" onclick="myFunction('RolloWert EgWohnRolloEinzel 85%');" />
-        <input type="submit" value="Zu" onclick="myFunction('RolloWert EgWohnRolloEinzel 100%');" />
+      Rollo einzel:<br/>
+      <input type="submit" value="Auf" onclick="myFunction('RolloWert EgWohnRolloEinzel 1%');" />
+      <input type="submit" value="Halb" onclick="myFunction('RolloWert EgWohnRolloEinzel 40%');" />
+      <input type="submit" value="85%" onclick="myFunction('RolloWert EgWohnRolloEinzel 85%');" />
+      <input type="submit" value="Zu" onclick="myFunction('RolloWert EgWohnRolloEinzel 100%');" /><br/>
+
+      Rollo doppel:<br/>
+      <input type="submit" value="Auf" onclick="myFunction('RolloWert EgWohnRolloDoppel 1%');" />
+      <input type="submit" value="Halb" onclick="myFunction('RolloWert EgWohnRolloDoppel 40%');" />
+      <input type="submit" value="85%" onclick="myFunction('RolloWert EgWohnRolloDoppel 85%');" />
+      <input type="submit" value="Zu" onclick="myFunction('RolloWert EgWohnRolloDoppel 100%');" /><br/>
+      
+      Dose Fensterbank:<br/>
+      <img src="img/bulb-on.png" width="50"/>
+      <input type="submit" value="Aus" onclick="myFunction('Switch EgWohnDoseFenster 0');" />
+      <input type="submit" value="An" onclick="myFunction('Switch EgWohnDoseFenster 1');" /><br/>
+
+      Dosen TV:<br/>
+      <img src="img/bulb-on.png" width="50"/>
+      <input type="submit" value="Aus" onclick="myFunction('Switch EgWohnDosen 0');" />
+      <input type="submit" value="An" onclick="myFunction('Switch EgWohnDosen 1');" /><br/>
+
+      Dosen Sofa-Ecke:<br/>
+      <img src="img/bulb-on.png" width="50"/>
+      <input type="submit" value="Aus" onclick="myFunction('Switch EgWohnDosen2 0');" />
+      <input type="submit" value="An" onclick="myFunction('Switch EgWohnDosen2 1');" /><br/>
+   
     </div>
 
     <br/>
     
-   <div id="eg_arbeit">
+   <div id="eg_arbeit" class="room">
       Arbeit Spots:<br/>
+      <img src="img/bulb-on.png" width="50"/>
       <input type="submit" value="Aus" onclick="myFunction('Dimmer EgArbeitSpots 0');" />
-      <input type="submit" value="Dunkel" onclick="myFunction('Dimmer EgArbeitSpots 1');" />
+      <input type="submit" value="Dunkel (20)" onclick="myFunction('Dimmer EgArbeitSpots 20');" />
+      <input type="submit" value="Dunkel (25)" onclick="myFunction('Dimmer EgArbeitSpots 25');" />
+      <input type="submit" value="Dunkel (30)" onclick="myFunction('Dimmer EgArbeitSpots 30');" />
       <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgArbeitSpots 64');" />
       <input type="submit" value="Hell" onclick="myFunction('Dimmer EgArbeitSpots 255');" /><br/>
 
       Arbeit Lampe:<br/>
+      <img src="img/bulb-on.png" width="50"/>
       <input type="submit" value="aus" onclick="myFunction('Switch EgArbeitLight 0');" />
-      <input type="submit" value="an" onclick="myFunction('Switch EgArbeitLight 1');" >
+      <input type="submit" value="an" onclick="myFunction('Switch EgArbeitLight 1');" ><br/>
+
+      Arbeit Schreibtisch:<br/>
+      <input type="submit" value="aus" onclick="myFunction('Switch EgArbeitSchreibtisch 0');" />
+      <input type="submit" value="an" onclick="myFunction('Switch EgArbeitSchreibtisch 1');" /><br/>
+
+      Arbeit Dosen:<br/>
+      <input type="submit" value="aus" onclick="myFunction('Switch EgArbeitDosen 0');" />
+      <input type="submit" value="an" onclick="myFunction('Switch EgArbeitDosen 1');" />
+
    </div>
 
    <br/>
 
-    <div id="eg_wc">
+
+  <div id="eg_essen" class="room">
+      Essen Spots:<br/>
+      <img src="img/bulb-on.png" width="50"/>
+      <input type="submit" value="Aus" onclick="myFunction('Dimmer EgEssenSpots 0');" />
+      <input type="submit" value="Dunkel (20)" onclick="myFunction('Dimmer EgEssenSpots 20');" />
+      <input type="submit" value="Dunkel (25)" onclick="myFunction('Dimmer EgEssenSpots 25');" />
+      <input type="submit" value="Dunkel (30)" onclick="myFunction('Dimmer EgEssenSpots 30');" />
+      <input type="submit" value="Mittel" onclick="myFunction('Dimmer EgEssenSpots 64');" />
+      <input type="submit" value="Hell" onclick="myFunction('Dimmer EgEssenSpots 255');" /><br/>
+
+      Essen Dosen:<br/>
+      <input type="submit" value="aus" onclick="myFunction('Switch EgEssenDosen 0');" />
+      <input type="submit" value="an" onclick="myFunction('Switch EgEssenDosen 1');" />
+   </div>
+
+   <br/>
+
+    <div id="eg_wc" class="room">
       WC:<br/>
+            <img src="img/bulb-on.png" width="50"/>
       <input type="submit" value="aus" onclick="myFunction('Switch EgWcLight 0');" />
       <input type="submit" value="an" onclick="myFunction('Switch EgWcLight 1');" >
     </div>
 
     <br/>
 
-    <div id="eg_kueche">
+    <div id="eg_kueche" class="room">
       K&uuml;che:<br/>
+            <img src="img/bulb-on.png" width="50"/>
       <input type="submit" value="aus" onclick="myFunction('Switch EgKueche 0');" />
       <input type="submit" value="an" onclick="myFunction('Switch EgKueche 1');" >
     </div>

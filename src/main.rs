@@ -27,7 +27,8 @@ impl Received {
 enum Measurement {
     _Error,
     Undefined,
-    Temperature(Received, f32),
+    Temperature(Received, f32), // Deg Celsius
+    Brightness(Received, f32), // Lux
 }
 
 
@@ -47,19 +48,13 @@ struct EibAddr(u8, u8, u8);
 #[derive(Debug)]
 struct Wetter {
     till: Measurement,
-    a: String,
-    b: String,
-    c: String,
-    lampe: String,
+    flur_brightness: Measurement,
 }
 impl Wetter {
     pub fn new() -> Self {
         Self {
             till: Measurement::Undefined,
-            a: "".to_string(),
-            b: "".to_string(),
-            c: "".to_string(),
-            lampe: "".to_string()
+            flur_brightness: Measurement::Undefined,
         }
     }
 }
@@ -173,6 +168,7 @@ async fn hello_world(req: Request<Body>,
 	
         for a in &[
             "index.html",
+	    "functions.js",
             "default-style.css",
         ] {
             let uri = format!("/{}", a);
@@ -182,24 +178,22 @@ async fn hello_world(req: Request<Body>,
 
 
         handlebars.register_template_file("/", "template/index.html").expect("Could not register root uri");
-
-
-
+ 
 
         let mut _w = wetter.lock().unwrap();
         // wetter.lock()a.push('.');
 
-        _w.a.push('.');
+//        _w.a.push('.');
 
         #[derive(serde::Serialize)]
         struct Info {
             title: std::string::String,
             bar: i64,
             addr: String,
-            temp_a: String,
-            temp_b: String,
-            temp_c: String,
-            lampe: String,
+//            temp_a: String,
+//            temp_b: String,
+//            temp_c: String,
+            flur_brightness: String,
             till: String,
         }
 
@@ -207,10 +201,10 @@ async fn hello_world(req: Request<Body>,
             title: "Haus".to_owned(),
             bar: 1231,
             addr: format!("{:?}", remote_addr.to_string()),
-            temp_a: _w.a.clone(),
-            temp_b: _w.b.clone(),
-            temp_c: _w.c.clone(),
-            lampe: _w.lampe.clone(),
+//            temp_a: _w.a.clone(),
+//            temp_b: _w.b.clone(),
+//            temp_c: _w.c.clone(),
+            flur_brightness: match _w.flur_brightness { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() },
             till: match _w.till { Measurement::Temperature(_, t) => t.to_string(), _ => "".to_string() },
         };
 
@@ -267,12 +261,26 @@ enum Signal {
     OgTillLight,
     EgFlurSpots,
     EgKueche,
+    
     EgWohnSpots,
     EgWohnMitte,
+    EgWohnDosen,
+    EgWohnDosen2,
+
     EgArbeitSpots,
     EgArbeitLight,
+    EgArbeitSchreibtisch,
+    EgArbeitDosen,
+
+    EgEssenSpots,
+    EgEssenDosen,
+
     EgWcLight,
     EgWohnRolloEinzel,
+    EgWohnDoseFenster,
+
+    OgBadSpotsWarm,
+    OgBadSpotsKalt
 }
 impl FromStr for Signal {
     type Err = ();
@@ -280,13 +288,22 @@ impl FromStr for Signal {
     match input {
           "OgTillLight" => Ok(Signal::OgTillLight),
           "EgFlurSpots" => Ok(Signal::EgFlurSpots),
-           "EgKueche" => Ok(Signal::EgKueche),
+          "EgKueche" => Ok(Signal::EgKueche),
     	  "EgWohnSpots" => Ok(Signal::EgWohnSpots),
       	  "EgWohnMitte" => Ok(Signal::EgWohnMitte),
       	  "EgArbeitSpots" => Ok(Signal::EgArbeitSpots),
           "EgArbeitLight" => Ok(Signal::EgArbeitLight),
+	  "EgArbeitSchreibtisch" => Ok(Signal::EgArbeitSchreibtisch),
+ 	  "EgArbeitDosen" => Ok(Signal::EgArbeitDosen),
+  	  "EgEssenDosen" => Ok(Signal::EgEssenDosen),
+	  "EgEssenSpots" => Ok(Signal::EgEssenSpots),
       	  "EgWcLight" => Ok(Signal::EgWcLight),
           "EgWohnRolloEinzel" => Ok(Signal::EgWohnRolloEinzel),
+	  "EgWohnDoseFenster" => Ok(Signal::EgWohnDoseFenster),
+  	  "EgWohnDosen" => Ok(Signal::EgWohnDosen),
+    	  "EgWohnDosen2" => Ok(Signal::EgWohnDosen2),
+      	  "OgBadSpotsWarm" => Ok(Signal::OgBadSpotsWarm),
+      	  "OgBadSpotsKalt" => Ok(Signal::OgBadSpotsKalt),
 	  _ => Err( () ),
     }
     }
@@ -362,8 +379,17 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
         let frame = match command {
             WebCommand::Dimmer { signal: Signal::EgWohnSpots, value: x } => create_knx_frame_dimmer( 0x0201, x),
             WebCommand::Dimmer { signal: Signal::EgWohnMitte, value: x } => create_knx_frame_dimmer( 0x0202, x),
+	    WebCommand::Switch { signal: Signal::EgWohnDoseFenster, value: x } => create_knx_frame_onoff( 0x0505, x),
+    	    WebCommand::Switch { signal: Signal::EgWohnDosen, value: x } => create_knx_frame_onoff( 0x0508, x),
+       	    WebCommand::Switch { signal: Signal::EgWohnDosen2, value: x } => create_knx_frame_onoff( 0x0504, x),
+	    WebCommand::Switch { signal: Signal::EgArbeitSchreibtisch, value: x } => create_knx_frame_onoff( 0x0506, x),
+   	    WebCommand::Switch { signal: Signal::EgArbeitDosen, value: x } => create_knx_frame_onoff( 0x0507, x),
             WebCommand::Dimmer { signal: Signal::EgArbeitSpots, value: x } => create_knx_frame_dimmer( 0x0203, x),
+	    WebCommand::Dimmer { signal: Signal::OgBadSpotsKalt, value: x } => create_knx_frame_dimmer( 0x020f, x),
+   	    WebCommand::Dimmer { signal: Signal::OgBadSpotsWarm, value: x } => create_knx_frame_dimmer( 0x0212, x),
             WebCommand::Switch { signal: Signal::EgArbeitLight, value: x } => create_knx_frame_onoff( 0x0402, x),
+            WebCommand::Dimmer { signal: Signal::EgEssenSpots, value: x } => create_knx_frame_dimmer( 0x020A, x),
+	    WebCommand::Switch { signal: Signal::EgEssenDosen, value: x } => create_knx_frame_onoff( 0x0504, x),
             WebCommand::Switch { signal: Signal::EgWcLight, value: x } => create_knx_frame_onoff( 0x0101, x),
             WebCommand::Switch { signal: Signal::EgKueche, value: x } => create_knx_frame_onoff( 0x0107, x),
 
@@ -402,7 +428,7 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     loop {
         let mut buf = [0_u8; 32];
         let (len, _addr) = u.recv_from(&mut buf).expect("recv_from() failed.");
-//        print!("Got {} bytes from {}: ", len, addr);
+        println!("Got {} bytes from {}: ", len, _addr);
         let mut hex_string = std::string::String::new();
         for a in buf[0..len].iter() {
             // print!("{:02X} ", a);
@@ -427,19 +453,12 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
         // 0000 0010b  0x02
         // 0000 0101b  0x05
         // 0000 1101b  0x0d
-        // println!("{}  -- {:?}->{:?} (first: {})", &hex_string, a_src, a_dst, is_first);
         if len == 15 {
             // switch
 	    // Tills Licht AN:   10 06 00 0f 02 01 29 bc 12 04 04 01 d1 00 81
 	    // Tills Licht AUS:  10 06 00 0f 02 01 29 bc 12 04 04 01 d1 00 80
             let onoff = buf[14] & 0x1 == 1;
             println!("On-Off: {}", onoff);
-	        let mut v = data.lock().unwrap();
-	        if onoff {
-		        v.lampe = "ON".to_owned();
-	        } else {
-		        v.lampe = "OFF".to_owned();
-	        }
         }
         if len == 16 {
             // Wert 0..255 unsigned (z.B. Zielwert Dimmer setzen)
@@ -459,22 +478,35 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
                 false => f32::from(base) * 0.01f32 * 2.0f32.powi(exponent)
             };
 
+            let mut line: std::string::String;
 
-            let val = Measurement::Temperature (r.clone(), value);
+	    line = "".to_string();
+
             let mut v = data.lock().unwrap();
 
 	        if r.dest == EibAddr(0, 3, 4 ) {
 		        // gruppenadresse: Temperatur Till
-		        v.b = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
-                v.till = val; // copy 'Measurement'
+			let val = Measurement::Temperature (r.clone(), value);
+			line = format!("{:?}\n", &val);
+//		        v.b = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
+                        v.till = val; // copy 'Measurement'
 	        }
 	        if r.dest == EibAddr(0, 3, 0 ) {
 		        // gruppenadresse: Temperatur Schrankzimmer
-                v.c = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
-            }
+			let val = Measurement::Temperature (r.clone(), value);
+			line = format!("{:?}\n", &val);
+//                	v.c = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
+            	}
+		if r.dest == EibAddr(0, 3, 1) {
+		   // gruppenadresse: Helligkeit Flur EG
+		   println!("Flur: {:?}", &value);
+		   let val = Measurement::Brightness (r.clone(), value);
+		   line = format!("{:?}\n", &val);
+		   v.flur_brightness = val; //match val { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() };
+	        }
 
-            println!("{:?}\n", val);
-            let line = format!("{:?}\n", val);
+//            println!("{:?}\n", val);
+            
             logfile.write_all(line.as_bytes()).expect("could not append to buffer");
             logfile.flush().expect("could not write to file.")
         }
