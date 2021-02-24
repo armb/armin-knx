@@ -283,6 +283,9 @@ enum Signal {
     OgBadSpotsKalt,
     OgFlurSchrankzimmer,
     OgSchlafzimmer,
+
+    Klingel,
+    Summer
 }
 impl FromStr for Signal {
     type Err = ();
@@ -308,6 +311,8 @@ impl FromStr for Signal {
       	  "OgBadSpotsKalt" => Ok(Signal::OgBadSpotsKalt),
 	  "OgFlurSchrankzimmer" => Ok(Signal::OgFlurSchrankzimmer),
 	  "OgSchlafzimmer" => Ok(Signal::OgSchlafzimmer),
+  	  "Klingel" => Ok(Signal::Klingel),
+  	  "Summer" => Ok(Signal::Summer),
 	  _ => Err( () ),
     }
     }
@@ -396,10 +401,13 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
             WebCommand::Switch { signal: Signal::EgArbeitLight, value: x } => create_knx_frame_onoff( 0x0402, x),
             WebCommand::Dimmer { signal: Signal::EgEssenSpots, value: x } => create_knx_frame_dimmer( 0x020A, x),
 	    WebCommand::Switch { signal: Signal::EgEssenDosen, value: x } => create_knx_frame_onoff( 0x0504, x),
-            WebCommand::Switch { signal: Signal::EgWcLight, value: x } => create_knx_frame_onoff( 0x0101, x),
-            WebCommand::Switch { signal: Signal::EgKueche, value: x } => create_knx_frame_onoff( 0x0107, x),
+            WebCommand::Switch { signal: Signal::EgWcLight, value: x } => create_knx_frame_onoff( 0x0701, x),
+            WebCommand::Switch { signal: Signal::EgKueche, value: x } => create_knx_frame_onoff( 0x0707, x),
             WebCommand::Switch { signal: Signal::OgFlurSchrankzimmer, value: x } => create_knx_frame_onoff( 0x010a, x),
             WebCommand::Switch { signal: Signal::OgSchlafzimmer, value: x } => create_knx_frame_onoff( 0x0104, x),
+
+            WebCommand::Switch { signal: Signal::Klingel, value: x } => create_knx_frame_onoff( 0x0600, x),
+            WebCommand::Switch { signal: Signal::Summer, value: x } => create_knx_frame_onoff( 0x0602, x),
 
             WebCommand::Switch { signal: Signal::OgTillLight, value: x } => create_knx_frame_onoff( 0x0401, x),
 

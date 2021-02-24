@@ -35,6 +35,11 @@
     <!-- <hr/> -->
    <div id="message">{{ flur_brightness }}</div>
    <br/>
+   <div id="global" class="room">
+     <input type="submit" value="Klingel" onclick="myFunction('Switch Klingel 1');" />
+     <input type="submit" value="Summer" onclick="myFunction('Switch Summer 1');" />
+   </div>
+   <br/>
    <div id="till" class="room">
       Temperatur:
       <div class="temperature"> <img class="thermometer" src="img/thermometer.png" width="25"/> {{ till }} &deg;C </div></br>
