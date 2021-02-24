@@ -9,22 +9,44 @@
 	  req.send(body);
 	  //document.getElementById("demo").innerText = "BUTTON";
       }
+
+      function testWebsocket() {
+        if ("WebSocket" in window) {
+          alert("WebSocket is available");
+        }
+      }
+
+      async function testJsonPost() {
+        const response = await fetch('/n/tv/input/key', {
+          method: 'POST',
+          body: "{ \"key\": \"Pause\"}",
+          headers: { 'Content-Type': 'application/json' }
+      });
+      const myjson = await response.json();
+      alert("response: " + myjson);
+      console.log(myjson);
+      }
     </script>
     <!-- <script src="functions.js"></script> -->
   </head>
   <body>
-   <img src="img/house.png" width="400"/>
+   <img src="img/house.png" width="400" onclick="testJsonPost();" />
    <br/>
     <!-- <hr/> -->
    <div id="message">{{ flur_brightness }}</div>
    <br/>
    <div id="till" class="room">
-      Till:
-      <div class="temperature"> <img class="thermometer" src="img/thermometer.png" width="25"/> {{ till }} &deg;C </div>
+      Temperatur:
+      <div class="temperature"> <img class="thermometer" src="img/thermometer.png" width="25"/> {{ till }} &deg;C </div></br>
 
+      Licht:</br>
       <img src="img/bulb-on.png" width="50"/>
       <input type="submit" value="Aus" onclick="myFunction('Switch OgTillLight 0');" />
-      <input type="submit" value="An" onclick="myFunction('Switch OgTillLight 1');" />
+      <input type="submit" value="An" onclick="myFunction('Switch OgTillLight 1');" /><br/>
+      Dosen Flur/Schrankzimmer:</br>
+      <input type="submit" value="Aus" onclick="myFunction('Switch OgFlurSchrankzimmer 0');" />
+      <input type="submit" value="An" onclick="myFunction('Switch OgFlurSchrankzimmer 1');" />
+      
     </div>
 
     <br/>
@@ -149,6 +171,13 @@
       <input type="submit" value="an" onclick="myFunction('Switch EgKueche 1');" >
     </div>
 
+    <div id="og_schlafzimmer" class="room">
+      Schlafzimmer:<br/>
+      <img src="img/bulb-on.png" width="50"/>
+      <input type="submit" value="aus" onclick="myFunction('Switch OgSchlafzimmer 0');" />
+      <input type="submit" value="an" onclick="myFunction('Switch OgSchlafzimmer 1');" /></br>
+
+    
       <!-- <img src="img/thermometer.png" width="10%"/> -->
     <!-- <hr/> -->
 
