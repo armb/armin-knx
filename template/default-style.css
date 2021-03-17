@@ -1,76 +1,87 @@
-// * { font-size: 8vw; }
 
-* { font-size: 64px; }
+* {
+    font-size: 24px;
+    margin: 0px;
+}
 
 
 body {
-    background-color: darkslategrey;
+    background-color: #0da0a0;
     color: gray;
-    text-align: center;
-    width: 100vw;
+    padding: 0px 0px;
+
 }
 
-//    font-size: x-large;
-.room {
-    border: 2px solid silver;
+#etage_oben {
+    background-color: #20c0c0;
+}
+
+#etage_unten {
+    background-color: #20c0c0;
+}
+
+
+.etage_box {
+    padding: 10px;
+    margin: 10px;
+    border: 1px solid #c0c0c0;
     border-radius: 0.25em;
-//    font-weight: 100;
-    font-size: 3em;
-//    font-family: Roboto, sans-serif;
-    padding: 5px 12px;
-    color: green;
-    border-color:#999;
+}
+
+.etage {
+    display: block;
+//    margin: 10px;
+}
+
+.room_box {
+    padding: 10px;
+    border: 1px solid black;
+    border-radius: 0.25em;
+
+}
+
+.room {
+    display: none;
+    margin: 10px;
+    background-color: #c0c0c0;
+
+    //    border: 2px solid silver;
+    //    font-weight: 100;
+    //    font-size: 3em;
+    //    font-family: Roboto, sans-serif;
+    //    padding: 0px 0px;
+    //    color: green;
+    //    border-color:#ff0000;
+    //    background-color: #a00000;
 }
 
 .buttonOn, .buttonOff {
     font-size: 0.5em;
     font-weight: bold;
     display: inline-block;
-    margin: 10px auto;
+    margin: 0px auto;
     background-color: #202020;
     color: #d0d0d0;
-//    border: 0.4em solid #d4f7da;
+    //    border: 0.4em solid #d4f7da;
     border-radius: 0.5em;
     transition: all 0.3s;
     box-sizing: border-box;
     width: 5em;
-  //  height: 2em;
+    //  height: 2em;
     cursor: pointer;
     box-shadow: 0 0 0 rgba(0,0,0,0.1), inset 0 0 0 rgba(0,0,0,0.1);
     text-align: center;
     
 }
 
-.buttonOn:hover, .buttonOff:hover {
-		     box-shadow: 0 0 2em rgba(0,0,0,0.1), inset 0 0 1em rgba(0,0,0,0.1);
-		     background-color: #29a074;
-		 }
-
-.temperature {
-//     background-color: white;
+h2 {
+    font-size: 32px;
+    text-align: left;
+    color: white;
+    margin: 20px 0px 0px 0px;
 }
+
 
 #message {
     color: black;
-}
-
-#till {
-    background-color: #402020;
-}
-
-#eg_wohn, #eg_flur {
-    background-color: #202040;
-}
-
-#eg_arbeit {
-    background-color: #204020;
-}
-
-
-#eg_wc {
-    background-color: #203535   ;
-}
-
-#eg_kueche {
-    background-color: #303030;
 }
