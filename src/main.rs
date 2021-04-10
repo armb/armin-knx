@@ -70,13 +70,13 @@ fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Vec<u8>
 {
     let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
     let mut v = vec![
-	        // knx/ip header
-		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
+	// knx/ip header
+	// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
+	0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
 
-	        0x29, // data indication
-	        0x00, // extra-info
-	        0xbc, //low-prio,
+	0x29, // data indication
+	0x00, // extra-info
+	0xbc, //low-prio,
 	0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
 	0x12, 0x7e  // src: 0x127e -> 1.2.126
     ];
@@ -94,13 +94,13 @@ fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Vec<u8>
 {
     let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
     let mut v = vec![
-	        // knx/ip header
-		// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-	        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
+	// knx/ip header
+	// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
+	0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
 
-	        0x29, // data indication
-	        0x00, // extra-info
-	        0xbc, //low-prio,
+	0x29, // data indication
+	0x00, // extra-info
+	0xbc, //low-prio,
 	0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
 	0x12, 0x7e  // src: 0x127e -> 1.2.126
     ];
@@ -150,11 +150,91 @@ fn create_knx_frame_rollo(grp: u16, percent: u8, full: u8) -> Vec<u8>
 use std::sync::mpsc::Sender;
 // use crate::Measurement;
 
-async fn hello_world(req: Request<Body>,
-             http_data: &HttpData,
-		     remote_addr: SocketAddr,
-		     wetter: Arc<Mutex<Wetter>>,
-		     tx: Sender<KnxPacket>) -> Result<Response<Body>, Infallible> {
+
+// function never fails (always generates a Response<Body>)
+fn http_get_request_handler(req: Request<Body>,
+			    http_data: &HttpData,
+			    remote_addr: SocketAddr,
+			    wetter: Arc<Mutex<Wetter>>) -> Result<Response<Body>, Infallible> {
+    let mut handlebars = handlebars::Handlebars::new();	
+    for a in &[
+        "index.html",
+	"functions.js",
+        "default-style.css",
+    ] {
+        let uri = format!("/{}", a);
+        let path = format!("template/{}", a);
+        handlebars.register_template_file(&uri, path).expect(format!("Could not register '{}'", a).as_str());
+    }
+
+
+    handlebars.register_template_file("/", "template/index.html").expect("Could not register root uri");
+    
+    let mut _w = wetter.lock().unwrap();
+    // wetter.lock()a.push('.');
+
+    //        _w.a.push('.');
+
+    #[derive(serde::Serialize)]
+    struct Info {
+        title: std::string::String,
+        bar: i64,
+        addr: String,
+	//            temp_a: String,
+	//            temp_b: String,
+	//            temp_c: String,
+        flur_brightness: String,
+        till: String,
+    }
+
+    let info = Info {
+        title: "Haus".to_owned(),
+        bar: 1231,
+        addr: format!("{:?}", remote_addr.to_string()),
+	//            temp_a: _w.a.clone(),
+	//            temp_b: _w.b.clone(),
+	//            temp_c: _w.c.clone(),
+        flur_brightness: match _w.flur_brightness { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() },
+        till: match _w.till { Measurement::Temperature(_, t) => t.to_string(), _ => "".to_string() },
+    };
+
+    if handlebars.has_template(req.uri().to_string().as_str()) {
+        let output = handlebars.render(req.uri().to_string().as_str(), &info);
+        if output.is_err() {
+            eprintln!("GET '{:?}': could not render template", req.uri());
+            return Ok(Response::builder().status(hyper::StatusCode::NOT_FOUND).body("Not found.".into()).unwrap());
+        } else {
+            return Ok(Response::builder().status(200).body(output.unwrap().into()).unwrap());
+        }
+    }
+
+    let body = http_data.uri_data.get(req.uri().to_string().as_str());
+
+    // let b: hyper::Body = hyper::Body::from(body.unwrap());
+    match body {
+        Some(b) => {
+            let c = b.to_vec();
+	    let response = Response::builder().status(200).body(c.into()).unwrap();
+            return Ok(response);
+        },
+        _ => ()
+    }
+
+    // 'Error'
+    let response = Response::builder()
+        .status(hyper::StatusCode::BAD_REQUEST)
+        .body("Error...".into())
+        .unwrap();
+
+    Ok(response)
+}
+
+
+async fn http_request_handler(req: Request<Body>,
+			      http_data: &HttpData,
+			      remote_addr: SocketAddr,
+			      wetter: Arc<Mutex<Wetter>>,
+			      tx: Sender<KnxPacket>) -> Result<Response<Body>, Infallible> {
     let m = req.method().clone();
 
     if m == hyper::Method::PUT {
@@ -163,73 +243,7 @@ async fn hello_world(req: Request<Body>,
         let a = KnxPacket { a: body_str };
         tx.send(a).expect("tx queue full");
     } else if m == hyper::Method::GET {
-        let mut handlebars = handlebars::Handlebars::new();
-
-	
-        for a in &[
-            "index.html",
-	    "functions.js",
-            "default-style.css",
-        ] {
-            let uri = format!("/{}", a);
-            let path = format!("template/{}", a);
-            handlebars.register_template_file(&uri, path).expect(format!("Could not register '{}'", a).as_str());
-        }
-
-
-        handlebars.register_template_file("/", "template/index.html").expect("Could not register root uri");
- 
-
-        let mut _w = wetter.lock().unwrap();
-        // wetter.lock()a.push('.');
-
-//        _w.a.push('.');
-
-        #[derive(serde::Serialize)]
-        struct Info {
-            title: std::string::String,
-            bar: i64,
-            addr: String,
-//            temp_a: String,
-//            temp_b: String,
-//            temp_c: String,
-            flur_brightness: String,
-            till: String,
-        }
-
-        let info = Info {
-            title: "Haus".to_owned(),
-            bar: 1231,
-            addr: format!("{:?}", remote_addr.to_string()),
-//            temp_a: _w.a.clone(),
-//            temp_b: _w.b.clone(),
-//            temp_c: _w.c.clone(),
-            flur_brightness: match _w.flur_brightness { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() },
-            till: match _w.till { Measurement::Temperature(_, t) => t.to_string(), _ => "".to_string() },
-        };
-
-        if handlebars.has_template(req.uri().to_string().as_str()) {
-            let output = handlebars.render(req.uri().to_string().as_str(), &info);
-            if output.is_err() {
-                eprintln!("GET '{:?}': could not render template", req.uri());
-                return Ok(Response::builder().status(hyper::StatusCode::NOT_FOUND).body("Not found.".into()).unwrap());
-            } else {
-                return Ok(Response::builder().status(200).body(output.unwrap().into()).unwrap());
-            }
-        }
-
-        let body = http_data.uri_data.get(req.uri().to_string().as_str());
-
-        // let b: hyper::Body = hyper::Body::from(body.unwrap());
-        match body {
-            Some(b) => {
-                let c = b.to_vec();
-                return Ok(Response::builder().status(200).body(c.into()).unwrap());
-            },
-            _ => ()
-        }
-
-        eprintln!("not found: '{:?}'", req.uri());
+	return http_get_request_handler(req, http_data, remote_addr, wetter);
     }
     Ok(Response::builder().status(hyper::StatusCode::BAD_REQUEST).body("Bad request.".into()).unwrap())
 }
@@ -290,31 +304,31 @@ enum Signal {
 impl FromStr for Signal {
     type Err = ();
     fn from_str(input: &str) -> Result<Signal, Self::Err> {
-    match input {
-          "OgTillLight" => Ok(Signal::OgTillLight),
-          "EgFlurSpots" => Ok(Signal::EgFlurSpots),
-          "EgKueche" => Ok(Signal::EgKueche),
-    	  "EgWohnSpots" => Ok(Signal::EgWohnSpots),
-      	  "EgWohnMitte" => Ok(Signal::EgWohnMitte),
-      	  "EgArbeitSpots" => Ok(Signal::EgArbeitSpots),
-          "EgArbeitLight" => Ok(Signal::EgArbeitLight),
-	  "EgArbeitSchreibtisch" => Ok(Signal::EgArbeitSchreibtisch),
- 	  "EgArbeitDosen" => Ok(Signal::EgArbeitDosen),
-  	  "EgEssenDosen" => Ok(Signal::EgEssenDosen),
-	  "EgEssenSpots" => Ok(Signal::EgEssenSpots),
-      	  "EgWcLight" => Ok(Signal::EgWcLight),
-          "EgWohnRolloEinzel" => Ok(Signal::EgWohnRolloEinzel),
-	  "EgWohnDoseFenster" => Ok(Signal::EgWohnDoseFenster),
-  	  "EgWohnDosen" => Ok(Signal::EgWohnDosen),
-    	  "EgWohnDosen2" => Ok(Signal::EgWohnDosen2),
-      	  "OgBadSpotsWarm" => Ok(Signal::OgBadSpotsWarm),
-      	  "OgBadSpotsKalt" => Ok(Signal::OgBadSpotsKalt),
-	  "OgFlurSchrankzimmer" => Ok(Signal::OgFlurSchrankzimmer),
-	  "OgSchlafzimmer" => Ok(Signal::OgSchlafzimmer),
-  	  "Klingel" => Ok(Signal::Klingel),
-  	  "Summer" => Ok(Signal::Summer),
-	  _ => Err( () ),
-    }
+	match input {
+            "OgTillLight" => Ok(Signal::OgTillLight),
+            "EgFlurSpots" => Ok(Signal::EgFlurSpots),
+            "EgKueche" => Ok(Signal::EgKueche),
+    	    "EgWohnSpots" => Ok(Signal::EgWohnSpots),
+      	    "EgWohnMitte" => Ok(Signal::EgWohnMitte),
+      	    "EgArbeitSpots" => Ok(Signal::EgArbeitSpots),
+            "EgArbeitLight" => Ok(Signal::EgArbeitLight),
+	    "EgArbeitSchreibtisch" => Ok(Signal::EgArbeitSchreibtisch),
+ 	    "EgArbeitDosen" => Ok(Signal::EgArbeitDosen),
+  	    "EgEssenDosen" => Ok(Signal::EgEssenDosen),
+	    "EgEssenSpots" => Ok(Signal::EgEssenSpots),
+      	    "EgWcLight" => Ok(Signal::EgWcLight),
+            "EgWohnRolloEinzel" => Ok(Signal::EgWohnRolloEinzel),
+	    "EgWohnDoseFenster" => Ok(Signal::EgWohnDoseFenster),
+  	    "EgWohnDosen" => Ok(Signal::EgWohnDosen),
+    	    "EgWohnDosen2" => Ok(Signal::EgWohnDosen2),
+      	    "OgBadSpotsWarm" => Ok(Signal::OgBadSpotsWarm),
+      	    "OgBadSpotsKalt" => Ok(Signal::OgBadSpotsKalt),
+	    "OgFlurSchrankzimmer" => Ok(Signal::OgFlurSchrankzimmer),
+	    "OgSchlafzimmer" => Ok(Signal::OgSchlafzimmer),
+  	    "Klingel" => Ok(Signal::Klingel),
+  	    "Summer" => Ok(Signal::Summer),
+	    _ => Err( () ),
+	}
     }
 }
 
@@ -334,23 +348,23 @@ fn command_from_string( string: String) -> WebCommand
 {
     println!(" command_from_string: {:X?}", string);
 
-   let re_dimmer = regex::Regex::new(r"^Dimmer (?P<signal>[.[:word:]]+) (?P<value>[[:digit:]]+)$").unwrap();
-   let caps_dimmer = re_dimmer.captures(&string);
-   if let Some(cmd) = caps_dimmer {
-      let signal = match Signal::from_str(&cmd["signal"]) { Ok(x) => x, _ => return WebCommand::Error };
-      let value = match cmd["value"].parse::<u8>() { Ok(i) => i, Err(_) => return WebCommand::Error };
-      println!("Dimmer: {:?} -> {:?}", signal, value);
-      return WebCommand::Dimmer{ signal: signal, value: value };
-   }
+    let re_dimmer = regex::Regex::new(r"^Dimmer (?P<signal>[.[:word:]]+) (?P<value>[[:digit:]]+)$").unwrap();
+    let caps_dimmer = re_dimmer.captures(&string);
+    if let Some(cmd) = caps_dimmer {
+	let signal = match Signal::from_str(&cmd["signal"]) { Ok(x) => x, _ => return WebCommand::Error };
+	let value = match cmd["value"].parse::<u8>() { Ok(i) => i, Err(_) => return WebCommand::Error };
+	println!("Dimmer: {:?} -> {:?}", signal, value);
+	return WebCommand::Dimmer{ signal: signal, value: value };
+    }
 
-   let re_switch = regex::Regex::new(r"^Switch (?P<signal>[.[:word:]]+) (?P<value>1|0)$").unwrap();
-   let caps_switch = re_switch.captures(&string);
-   if let Some(cmd) = caps_switch {
-     let signal = match Signal::from_str(&cmd["signal"]) { Ok(x) => x, _ => return WebCommand::Error };
-     let value = if &cmd["value"] == "1" { true } else { false };
-     println!("switch: {:?} : {:?}", &signal, &value);
-     return WebCommand::Switch{ signal: signal, value: value };
-   }
+    let re_switch = regex::Regex::new(r"^Switch (?P<signal>[.[:word:]]+) (?P<value>1|0)$").unwrap();
+    let caps_switch = re_switch.captures(&string);
+    if let Some(cmd) = caps_switch {
+	let signal = match Signal::from_str(&cmd["signal"]) { Ok(x) => x, _ => return WebCommand::Error };
+	let value = if &cmd["value"] == "1" { true } else { false };
+	println!("switch: {:?} : {:?}", &signal, &value);
+	return WebCommand::Switch{ signal: signal, value: value };
+    }
 
     let re_switch = regex::Regex::new(r"^RolloWert (?P<signal>[.[:word:]]+) (?P<value>[[:digit:]]+)%$").unwrap();
     let caps_switch = re_switch.captures(&string);
@@ -361,25 +375,25 @@ fn command_from_string( string: String) -> WebCommand
         return WebCommand::RolloWert{ signal: signal, value: value };
     }
 
-   WebCommand::Error
+    WebCommand::Error
 }
 
 //function
 fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
     // create udp socket
     let knx_ip = std::net::UdpSocket::bind("0.0.0.0:0").expect("bind failed");
-//        let knx_ip = std::net::UdpSocket::bind("192.168.0.90:3671").expect("bind failed");
+    //        let knx_ip = std::net::UdpSocket::bind("192.168.0.90:3671").expect("bind failed");
     knx_ip.join_multicast_v4(
-         &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
-         &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
+        &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
+        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
 
-   //  knxIpSend.set_multicast_loop_v4(true).expect("set_multicast_loop()");
+    //  knxIpSend.set_multicast_loop_v4(true).expect("set_multicast_loop()");
 
     //    u.connect("192.168.0.162:51000"  ).expect("connect() failed");
     knx_ip.connect("224.0.23.12:3671"  ).expect("connect() failed");
     // u.connect("239.192.39.238:51000"  ).expect("connect() failed");
 
- 
+    
 
     // wait for send-requests from other threads
     loop {
@@ -419,9 +433,9 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
 	};
 
         match knx_ip.send( &frame ) {
-	      Ok(x) => { println!("send(): {}", x); () },
-	      Err(_) => println!("send() failed."),
-	      }
+	    Ok(x) => { println!("send(): {}", x); () },
+	    Err(_) => println!("send() failed."),
+	}
 
     } // loop
 }
@@ -431,7 +445,7 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
 
 fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
-//    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
+    //    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
     let b = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo.hex").expect("Could not open file");
 
 
@@ -497,28 +511,28 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 
             let mut v = data.lock().unwrap();
 
-	        if r.dest == EibAddr(0, 3, 4 ) {
-		        // gruppenadresse: Temperatur Till
-			let val = Measurement::Temperature (r.clone(), value);
-			line = format!("{:?}\n", &val);
-//		        v.b = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
-                        v.till = val; // copy 'Measurement'
-	        }
-	        if r.dest == EibAddr(0, 3, 0 ) {
-		        // gruppenadresse: Temperatur Schrankzimmer
-			let val = Measurement::Temperature (r.clone(), value);
-			line = format!("{:?}\n", &val);
-//                	v.c = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
-            	}
-		if r.dest == EibAddr(0, 3, 1) {
-		   // gruppenadresse: Helligkeit Flur EG
-		   println!("Flur: {:?}", &value);
-		   let val = Measurement::Brightness (r.clone(), value);
-		   line = format!("{:?}\n", &val);
-		   v.flur_brightness = val; //match val { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() };
-	        }
+	    if r.dest == EibAddr(0, 3, 4 ) {
+		// gruppenadresse: Temperatur Till
+		let val = Measurement::Temperature (r.clone(), value);
+		line = format!("{:?}\n", &val);
+		//		        v.b = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
+                v.till = val; // copy 'Measurement'
+	    }
+	    if r.dest == EibAddr(0, 3, 0 ) {
+		// gruppenadresse: Temperatur Schrankzimmer
+		let val = Measurement::Temperature (r.clone(), value);
+		line = format!("{:?}\n", &val);
+		//                	v.c = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
+            }
+	    if r.dest == EibAddr(0, 3, 1) {
+		// gruppenadresse: Helligkeit Flur EG
+		println!("Flur: {:?}", &value);
+		let val = Measurement::Brightness (r.clone(), value);
+		line = format!("{:?}\n", &val);
+		v.flur_brightness = val; //match val { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() };
+	    }
 
-//            println!("{:?}\n", val);
+	    //            println!("{:?}\n", val);
             
             logfile.write_all(line.as_bytes()).expect("could not append to buffer");
             logfile.flush().expect("could not write to file.")
@@ -529,6 +543,12 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 
 #[tokio::main]
 async fn main() {
+
+        // test:
+//    let _a = match plot() {
+//	Ok(x) => x,
+//	Err(_) => return () // Err("kaputt".into())
+//    };
 
     let mut http_data = HttpData {
         index: "".to_string(),
@@ -551,18 +571,18 @@ async fn main() {
     let shared_data = Arc::new(Mutex::new(Wetter::new() ));
 
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
-    u.join_multicast_v4(
-        &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
-
-    u.set_multicast_loop_v4(true).expect("set_multicast_loop()");
+    if false {
+	u.join_multicast_v4(
+            &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
+            &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
+	u.set_multicast_loop_v4(true).expect("set_multicast_loop()");
+    }
 
     let bus_data = shared_data.clone();
     let (tx, rx) = channel();
 
     let _s = std::thread::spawn(move || bus_send_thread(rx));
     let _j = std::thread::spawn(move || bus_receive_thread(&u, bus_data));
-
 
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
@@ -583,21 +603,59 @@ async fn main() {
             Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
                 let http_data = http_data.clone();
                 let request_data = connection_data.clone();
-		        let request_tx = connection_tx.clone();
+		let request_tx = connection_tx.clone();
                 // println!("request_data: {:?}", request_data);
                 async move {
                     // this function is executed for each request inside a connection
-                    hello_world(req, &http_data, remote_addr, request_data, request_tx).await
+                    http_request_handler(req, &http_data, remote_addr, request_data, request_tx).await
                 }
             }))
         }
     });
 
+
+    
     // Then bind and serve...
     let server = Server::bind(&addr).serve(make_svc);
 
-    if let Err(e) = server.await {
-        eprintln!("server error: {}", e);
-    }
-    // j.join().expect("Could not join() thread.")
+    // server.
+//    if let Err(e) = server.await {
+//        eprintln!("server error: {}", e);
+//    }
+
+    match server.await
+//     server.join().expect("Could not join() thread.")?
 }
+
+
+
+// use plotters::prelude::*;
+// fn plot() -> Result<(), Box<dyn std::error::Error>> {
+//     let root = BitMapBackend::new("a.png", (640, 480)).into_drawing_area();
+//     root.fill(&WHITE)?;
+//     let mut chart = ChartBuilder::on(&root)
+//         .caption("y=x^2", ("sans-serif", 50).into_font())
+//         .margin(5)
+//         .x_label_area_size(30)
+//         .y_label_area_size(30)
+//         .build_cartesian_2d(-1f32..1f32, -0.1f32..1f32)?;
+
+//     chart.configure_mesh().draw()?;
+
+//     chart
+//         .draw_series(LineSeries::new(
+//             (-50..=50).map(|x| x as f32 / 50.0).map(|x| (x, x * x)),
+//             &RED,
+//         ))?
+//     .label("y = x^2")
+//         .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+//     chart
+//         .configure_series_labels()
+//         .background_style(&WHITE.mix(0.8))
+//         .border_style(&BLACK)
+//         .draw()?;
+
+//     Err("Nanu?".into())
+// //     Ok(())
+// }
