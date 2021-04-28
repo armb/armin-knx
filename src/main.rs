@@ -447,10 +447,12 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
     //    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
     let b = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo.hex").expect("Could not open file");
+    let c = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/knx_0-2-19.log").expect("Could not open file");
 
 
     let mut logfile = std::io::BufWriter::new(a);
     let mut logfile_hex = std::io::BufWriter::new(b);
+    let mut log_0_2_19 = std::io::BufWriter::new(c);
 
     loop {
         let mut buf = [0_u8; 32];
@@ -477,6 +479,10 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
             continue;
         }
 
+        if a_dst == EibAddr(0, 2, 19) {
+	  // bewegung flur?
+	  log_0_2_19.write_all(format!("{:?}\n", r.time).as_bytes()).expect("write_all() failed");
+	}
         // 0000 0010b  0x02
         // 0000 0101b  0x05
         // 0000 1101b  0x0d
@@ -619,11 +625,10 @@ async fn main() {
     let server = Server::bind(&addr).serve(make_svc);
 
     // server.
-//    if let Err(e) = server.await {
-//        eprintln!("server error: {}", e);
-//    }
+    if let Err(e) = server.await {
+        eprintln!("server error: {}", e);
+    }
 
-    match server.await
 //     server.join().expect("Could not join() thread.")?
 }
 
