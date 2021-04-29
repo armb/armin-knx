@@ -69,85 +69,6 @@ struct HttpData {
 }
 
 
-fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Vec<u8>
-{
-    let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
-    let mut v = vec![
-	// knx/ip header
-	// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-	0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
-
-	0x29, // data indication
-	0x00, // extra-info
-	0xbc, //low-prio,
-	0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-	0x12, 0x7e  // src: 0x127e -> 1.2.126
-    ];
-    v.append( &mut dst );
-    v.push( 1u8 ); //len
-    v.push( 0x00 ); // 'TPCI'
-    if onoff { v.push( 0x81u8 ); } else { v.push( 0x80 ); }
-    println!(" onoff: {:X?}", v);
-    v
-
-}
-
-
-fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Vec<u8>
-{
-    let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
-    let mut v = vec![
-	// knx/ip header
-	// HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-	0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
-
-	0x29, // data indication
-	0x00, // extra-info
-	0xbc, //low-prio,
-	0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-	0x12, 0x7e  // src: 0x127e -> 1.2.126
-    ];
-    v.append( &mut dst );
-    v.push( 2u8 ); //len
-    v.push( 0x00 ); // 'TPCI'
-    v.push( 0x80 );
-    v.push( percent  );
-
-    println!(" helligkeitswert: {:X?}", v);
-
-    v
-}
-
-
-
-
-// 'full': entspricht wert, der fuer vollstaendiges schliessen gesendet werden muss, z.B. 205
-fn create_knx_frame_rollo(grp: u16, percent: u8, full: u8) -> Vec<u8>
-{
-    let t = percent as u16 * full as u16 / 100;
-    let tx_raw = if t > 255 { 255 } else { t as u8 };
-    let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
-    let mut v = vec![
-        // knx/ip header
-        // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
-
-        0x29, // data indication (rollo: 0x2e)
-        0x00, // extra-info
-        0xbc, //low-prio,
-        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-        0x12, 0x7e  // src: 0x127e -> 1.2.126
-    ];
-    v.append( &mut dst );
-    v.push( 2u8 ); //len
-    v.push( 0x00 ); // 'TPCI'
-    v.push( 0x80 );
-    v.push( tx_raw  );
-
-    println!(" rollo-wert: {:X?}", v);
-
-    v
-}
 
 
 use std::sync::mpsc::Sender;
@@ -272,6 +193,7 @@ struct KnxPacket {
     a: String,
 }
 
+
 #[derive(Debug)]
 enum Signal {
     // Error,
@@ -304,6 +226,9 @@ enum Signal {
     Klingel,
     Summer
 }
+
+
+
 impl FromStr for Signal {
     type Err = ();
     fn from_str(input: &str) -> Result<Signal, Self::Err> {
@@ -383,20 +308,8 @@ fn command_from_string( string: String) -> WebCommand
 
 //function
 fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
-    // create udp socket
-    let knx_ip = std::net::UdpSocket::bind("0.0.0.0:0").expect("bind failed");
-    //        let knx_ip = std::net::UdpSocket::bind("192.168.0.90:3671").expect("bind failed");
-    knx_ip.join_multicast_v4(
-        &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
 
-    //  knxIpSend.set_multicast_loop_v4(true).expect("set_multicast_loop()");
-
-    //    u.connect("192.168.0.162:51000"  ).expect("connect() failed");
-    knx_ip.connect("224.0.23.12:3671"  ).expect("connect() failed");
-    // u.connect("239.192.39.238:51000"  ).expect("connect() failed");
-
-    
+    let mut knx = knx::create();
 
     // wait for send-requests from other threads
     loop {
@@ -404,41 +317,42 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
 	println!("user command: {:?}", &packet);
 	let command = command_from_string( packet.a );
 
-        let frame = match command {
-            WebCommand::Dimmer { signal: Signal::EgWohnSpots, value: x } => create_knx_frame_dimmer( 0x0201, x),
-            WebCommand::Dimmer { signal: Signal::EgWohnMitte, value: x } => create_knx_frame_dimmer( 0x0202, x),
-	    WebCommand::Switch { signal: Signal::EgWohnDoseFenster, value: x } => create_knx_frame_onoff( 0x0505, x),
-    	    WebCommand::Switch { signal: Signal::EgWohnDosen, value: x } => create_knx_frame_onoff( 0x0508, x),
-       	    WebCommand::Switch { signal: Signal::EgWohnDosen2, value: x } => create_knx_frame_onoff( 0x0504, x),
-	    WebCommand::Switch { signal: Signal::EgArbeitSchreibtisch, value: x } => create_knx_frame_onoff( 0x0506, x),
-   	    WebCommand::Switch { signal: Signal::EgArbeitDosen, value: x } => create_knx_frame_onoff( 0x0507, x),
-            WebCommand::Dimmer { signal: Signal::EgArbeitSpots, value: x } => create_knx_frame_dimmer( 0x0203, x),
-	    WebCommand::Dimmer { signal: Signal::OgBadSpotsKalt, value: x } => create_knx_frame_dimmer( 0x020f, x),
-   	    WebCommand::Dimmer { signal: Signal::OgBadSpotsWarm, value: x } => create_knx_frame_dimmer( 0x0212, x),
-            WebCommand::Switch { signal: Signal::EgArbeitLight, value: x } => create_knx_frame_onoff( 0x0402, x),
-            WebCommand::Dimmer { signal: Signal::EgEssenSpots, value: x } => create_knx_frame_dimmer( 0x020A, x),
-	    WebCommand::Switch { signal: Signal::EgEssenDosen, value: x } => create_knx_frame_onoff( 0x0504, x),
-            WebCommand::Switch { signal: Signal::EgWcLight, value: x } => create_knx_frame_onoff( 0x0701, x),
-            WebCommand::Switch { signal: Signal::EgKueche, value: x } => create_knx_frame_onoff( 0x0707, x),
-            WebCommand::Switch { signal: Signal::OgFlurSchrankzimmer, value: x } => create_knx_frame_onoff( 0x010a, x),
-            WebCommand::Switch { signal: Signal::OgSchlafzimmer, value: x } => create_knx_frame_onoff( 0x0104, x),
+        let (addr,frame) = match command {
+            WebCommand::Dimmer { signal: Signal::EgWohnSpots, value: x } => (0x0201, knx::Command::Dimmer(x)),
+            WebCommand::Dimmer { signal: Signal::EgWohnMitte, value: x } => ( 0x0202, knx::Command::Dimmer(x)),
+	    WebCommand::Switch { signal: Signal::EgWohnDoseFenster, value: x } => ( 0x0505, knx::Command::Switch(x)),
+    	    WebCommand::Switch { signal: Signal::EgWohnDosen, value: x } => ( 0x0508, knx::Command::Switch(x)),
+       	    WebCommand::Switch { signal: Signal::EgWohnDosen2, value: x } => ( 0x0504, knx::Command::Switch(x)),
+	    WebCommand::Switch { signal: Signal::EgArbeitSchreibtisch, value: x } => ( 0x0506, knx::Command::Switch(x)),
+   	    WebCommand::Switch { signal: Signal::EgArbeitDosen, value: x } => ( 0x0507, knx::Command::Switch(x)),
+            WebCommand::Dimmer { signal: Signal::EgArbeitSpots, value: x } => ( 0x0203, knx::Command::Dimmer(x)),
+	    WebCommand::Dimmer { signal: Signal::OgBadSpotsKalt, value: x } => ( 0x020f, knx::Command::Dimmer(x)),
+   	    WebCommand::Dimmer { signal: Signal::OgBadSpotsWarm, value: x } => ( 0x0212, knx::Command::Dimmer(x)),
+            WebCommand::Switch { signal: Signal::EgArbeitLight, value: x } => ( 0x0402, knx::Command::Switch(x)),
+            WebCommand::Dimmer { signal: Signal::EgEssenSpots, value: x } => ( 0x020A, knx::Command::Dimmer(x)),
+	    WebCommand::Switch { signal: Signal::EgEssenDosen, value: x } => ( 0x0504, knx::Command::Switch(x)),
+            WebCommand::Switch { signal: Signal::EgWcLight, value: x } => ( 0x0701, knx::Command::Switch(x)),
+            WebCommand::Switch { signal: Signal::EgKueche, value: x } => ( 0x0707, knx::Command::Switch(x)),
+            WebCommand::Switch { signal: Signal::OgFlurSchrankzimmer, value: x } => ( 0x010a, knx::Command::Switch(x)),
+            WebCommand::Switch { signal: Signal::OgSchlafzimmer, value: x } => ( 0x0104, knx::Command::Switch(x)),
 
-            WebCommand::Switch { signal: Signal::Klingel, value: x } => create_knx_frame_onoff( 0x0600, x),
-            WebCommand::Switch { signal: Signal::Summer, value: x } => create_knx_frame_onoff( 0x0602, x),
+            WebCommand::Switch { signal: Signal::Klingel, value: x } => ( 0x0600, knx::Command::Switch(x)),
+            WebCommand::Switch { signal: Signal::Summer, value: x } => ( 0x0602, knx::Command::Switch(x)),
 
-            WebCommand::Switch { signal: Signal::OgTillLight, value: x } => create_knx_frame_onoff( 0x0401, x),
+            WebCommand::Switch { signal: Signal::OgTillLight, value: x } => ( 0x0401, knx::Command::Switch(x)),
 
-            WebCommand::Dimmer{ signal: Signal::EgFlurSpots, value: x } => create_knx_frame_dimmer( 0x0200 + 98, x),
+            WebCommand::Dimmer{ signal: Signal::EgFlurSpots, value: x } => ( 0x0200 + 98, knx::Command::Dimmer(x)),
 
-            WebCommand::RolloWert { signal: Signal::EgWohnRolloEinzel, value: x} => create_knx_frame_rollo( 0x0010 /* 0/0/16 */, x,  200),
+            WebCommand::RolloWert { signal: Signal::EgWohnRolloEinzel, value: x} =>  (0x0010 /* 0/0/16 */, knx::Command::UpDownTarget(x,  200)),
 
             _ => { println!("command unhandled: {:?}", command); continue; }
 	};
 
-        match knx_ip.send( &frame ) {
-	    Ok(x) => { println!("send(): {}", x); () },
-	    Err(_) => println!("send() failed."),
-	}
+	knx.send(addr,frame);
+        // match knx_ip.send( &frame ) {
+	//     Ok(x) => { println!("send(): {}", x); () },
+	//     Err(_) => println!("send() failed."),
+	// }
 
     } // loop
 }
@@ -553,9 +467,6 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 #[tokio::main]
 async fn main() {
 
-
-      let k = knx::create();
-      
         // test:
 //    let _a = match plot() {
 //	Ok(x) => x,
