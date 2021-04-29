@@ -10,6 +10,9 @@ use hyper::body;
 use hyper::{Body, Request, Response, Server};
 
 
+mod knx;
+
+
 #[derive(Debug, Copy, Clone)]
 struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
 impl Received {
@@ -550,6 +553,9 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 #[tokio::main]
 async fn main() {
 
+
+      let k = knx::create();
+      
         // test:
 //    let _a = match plot() {
 //	Ok(x) => x,
