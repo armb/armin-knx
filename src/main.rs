@@ -11,7 +11,10 @@ use hyper::{Body, Request, Response, Server};
 
 
 mod knx;
+mod config;
+mod html;
 
+use html::Html;
 
 #[derive(Debug, Copy, Clone)]
 struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
@@ -36,14 +39,8 @@ enum Measurement {
 
 
 #[derive(Debug)]
-struct DimmerZielwert { received: Received, value: u8 }
-
-#[derive(Debug)]
 struct Data { received: Received, hex_string: String }
 
-#[derive(Debug)]
-struct Bus { value: f32, con: *mut libc::c_void }
-unsafe impl Send for Bus {}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 struct EibAddr(u8, u8, u8);
@@ -62,12 +59,12 @@ impl Wetter {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct HttpData {
     index: String,
+    html: Html,
     uri_data: HashMap<String, Vec<u8>>,
 }
-
 
 
 
@@ -77,9 +74,13 @@ use std::sync::mpsc::Sender;
 
 // function never fails (always generates a Response<Body>)
 fn http_get_request_handler(req: Request<Body>,
-			    http_data: &HttpData,
+			    http_data: Arc<HttpData>,
 			    remote_addr: SocketAddr,
 			    wetter: Arc<Mutex<Wetter>>) -> Result<Response<Body>, Infallible> {
+
+    eprintln!("debug:  GET {:#?}", req);
+
+    
     let mut handlebars = handlebars::Handlebars::new();	
     for a in &[
         "index.html",
@@ -122,8 +123,10 @@ fn http_get_request_handler(req: Request<Body>,
         till: match _w.till { Measurement::Temperature(_, t) => t.to_string(), _ => "".to_string() },
     };
 
-    if handlebars.has_template(req.uri().to_string().as_str()) {
-        let output = handlebars.render(req.uri().to_string().as_str(), &info);
+    let uri = req.uri().to_string();
+
+    if handlebars.has_template(&uri) {
+        let output = handlebars.render(&uri, &info);
         if output.is_err() {
             eprintln!("GET '{:?}': could not render template", req.uri());
             return Ok(Response::builder().status(hyper::StatusCode::NOT_FOUND).body("Not found.".into()).unwrap());
@@ -132,7 +135,15 @@ fn http_get_request_handler(req: Request<Body>,
         }
     }
 
-    let body = http_data.uri_data.get(req.uri().to_string().as_str());
+    if uri == "/Hallo" {
+	let res_build = Response::builder();
+	let a = http_data.html.render(html::What::Index); //.expect("template");
+//	let body = hyper::Body::from(a);
+	let response = res_build.body(a.into());
+	return Ok(response.unwrap());
+    }
+
+    let body = http_data.uri_data.get(&uri);
 
     // let b: hyper::Body = hyper::Body::from(body.unwrap());
     match body {
@@ -155,7 +166,7 @@ fn http_get_request_handler(req: Request<Body>,
 
 
 async fn http_request_handler(req: Request<Body>,
-			      http_data: &HttpData,
+			      http_data: Arc<HttpData>,
 			      remote_addr: SocketAddr,
 			      wetter: Arc<Mutex<Wetter>>,
 			      tx: Sender<KnxPacket>) -> Result<Response<Body>, Infallible> {
@@ -307,9 +318,7 @@ fn command_from_string( string: String) -> WebCommand
 }
 
 //function
-fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
-
-    let mut knx = knx::create();
+fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx) {
 
     // wait for send-requests from other threads
     loop {
@@ -348,7 +357,7 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>) {
             _ => { println!("command unhandled: {:?}", command); continue; }
 	};
 
-	knx.send(addr,frame);
+	knx.send(addr, frame);
         // match knx_ip.send( &frame ) {
 	//     Ok(x) => { println!("send(): {}", x); () },
 	//     Err(_) => println!("send() failed."),
@@ -467,14 +476,34 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 #[tokio::main]
 async fn main() {
 
-        // test:
+    let config = config::read_from_file("res/config.json").expect("could not read config file");
+
+//    let h = html::create().expect("html::create()");
+
+//    let r = h.render(&config, html::What::Index);
+
+//    println!("R: {}", r);
+    
 //    let _a = match plot() {
 //	Ok(x) => x,
 //	Err(_) => return () // Err("kaputt".into())
+    //    };
+
+//    let index = match html::index(&config) {
+//	Ok(x) => x,
+//	Err(_) => String::from("")
 //    };
+//    println!("Index: {}", index);
+
+    for r in config.file.rooms.iter() {
+	println!("Raum: {:?}", r);
+    }
+
+    let h = html::create(&config).expect("html::create()");
 
     let mut http_data = HttpData {
         index: "".to_string(),
+	html: h,
         uri_data: HashMap::new(),
     };
 
@@ -502,35 +531,43 @@ async fn main() {
     }
 
     let bus_data = shared_data.clone();
+
+    let knx = knx::create();
+
+
+    // channel for commands from incoming http requests to knx bus
     let (tx, rx) = channel();
 
-    let _s = std::thread::spawn(move || bus_send_thread(rx));
+    let _s = std::thread::spawn(move || bus_send_thread(rx, knx));
     let _j = std::thread::spawn(move || bus_receive_thread(&u, bus_data));
 
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.file.http.listen_port));
     // A `Service` is needed for every connection, so this
     // creates one from our `hello_world` function.
     use hyper::server::conn::AddrStream;
     use hyper::service::{make_service_fn, service_fn};
 
+    // shared-ptr (r/o data)
+    let http_data_arc_1 = Arc::new(http_data);
+
     // And a MakeService to handle each connection...
     let make_svc = make_service_fn(|socket: &AddrStream| {
         // this function is executed for each incoming connection
         let remote_addr = socket.remote_addr();
-        let http_data = http_data.clone();
         let connection_tx = tx.clone();
         let connection_data = shared_data.clone(); //to_owned();
+	let http_data_arc_2 = http_data_arc_1.clone();
         // create a service answering the requests
         async move {
             Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
-                let http_data = http_data.clone();
                 let request_data = connection_data.clone();
 		let request_tx = connection_tx.clone();
+		let http_data_arc_3 = http_data_arc_2.clone();
                 // println!("request_data: {:?}", request_data);
                 async move {
                     // this function is executed for each request inside a connection
-                    http_request_handler(req, &http_data, remote_addr, request_data, request_tx).await
+                    http_request_handler(req, http_data_arc_3, remote_addr, request_data, request_tx).await
                 }
             }))
         }

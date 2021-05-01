@@ -10,10 +10,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "arbu-eb-rust"
+name = "armin-knx"
 version = "0.1.0"
 dependencies = [
  "handlebars",
+ "http",
  "hyper",
  "libc",
  "regex",

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>T</title>
+    <link rel="stylesheet" href="default-style.css">
+    <script>
+      {{> tpl_javascript}}
+    </script>
+  </head>
+  <body>
+    <h1>{{title}}</h1>
+    <div class="etage_box">
+    </div>
+
+    <div class="etage_box">
+      {{#each rooms as |r| ~}}
+      <div class="room_box">
+	<h3 onclick="toggleVisibility('{{r.id}}');">{{r.name}}</h3>
+	<div id="{{r.id}}" class="room">
+	  {{#each r.items as |i| ~}}
+	  --> {{i.name}}: <input type="submit" value="Aus" onclick="myFunction('Switch {{i.id}} 0');" />
+	    <input type="submit" value="An" onclick="myFunction('Switch {{i.id}} 1');" /><br/>
+	  {{/each~}}
+        </div><!-- room -->
+      </div><!-- room_box -->
+      {{/each~}}
+    </div><!-- etage_box -->
+
+  </body>
+</html>
