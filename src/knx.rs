@@ -9,6 +9,7 @@ pub enum Command {
     UpDownTarget(u8,u8), //value,max
 }
 
+
 pub struct Knx {
     socket: std::net::UdpSocket,
 }

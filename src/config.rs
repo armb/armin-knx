@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
+
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct EibAddr(u8, u8, u8);
@@ -92,13 +94,15 @@ pub struct Config {
 }
 
 
-pub fn read_from_file(path: &str) -> Result<Config,Error> {
+pub fn read_from_file(path: &str) -> Result<Arc<Config>,Error> {
 
     let config_file_data = std::fs::read_to_string(path)?;
 
     let c: ConfigFile = serde_json::from_str(&config_file_data)?;
 
-    Ok (Config { file: c } )
+    
+
+    Ok (Arc::new(Config { file: c } ) )
 }
 
 

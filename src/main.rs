@@ -9,12 +9,19 @@ use std::convert::Infallible;
 use hyper::body;
 use hyper::{Body, Request, Response, Server};
 
+// use std::time::{Duration, Instant};
+use std::time::SystemTime;
+
+use std::sync::mpsc::channel;
+
+
 
 mod knx;
 mod config;
 mod html;
 
 use html::Html;
+use config::Config;
 
 #[derive(Debug, Copy, Clone)]
 struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
@@ -35,6 +42,12 @@ enum Measurement {
     Undefined,
     Temperature(Received, f32), // Deg Celsius
     Brightness(Received, f32), // Lux
+}
+
+#[derive(Debug, Copy, Clone)]
+struct Sample {
+    measurement: Measurement,
+    timestamp: SystemTime
 }
 
 
@@ -69,7 +82,6 @@ struct HttpData {
 
 
 use std::sync::mpsc::Sender;
-// use crate::Measurement;
 
 
 // function never fails (always generates a Response<Body>)
@@ -80,8 +92,8 @@ fn http_get_request_handler(req: Request<Body>,
 
     eprintln!("debug:  GET {:#?}", req);
 
-    
     let mut handlebars = handlebars::Handlebars::new();	
+
     for a in &[
         "index.html",
 	"functions.js",
@@ -105,9 +117,6 @@ fn http_get_request_handler(req: Request<Body>,
         title: std::string::String,
         bar: i64,
         addr: String,
-	//            temp_a: String,
-	//            temp_b: String,
-	//            temp_c: String,
         flur_brightness: String,
         till: String,
     }
@@ -116,9 +125,6 @@ fn http_get_request_handler(req: Request<Body>,
         title: "Haus".to_owned(),
         bar: 1231,
         addr: format!("{:?}", remote_addr.to_string()),
-	//            temp_a: _w.a.clone(),
-	//            temp_b: _w.b.clone(),
-	//            temp_c: _w.c.clone(),
         flur_brightness: match _w.flur_brightness { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() },
         till: match _w.till { Measurement::Temperature(_, t) => t.to_string(), _ => "".to_string() },
     };
@@ -247,7 +253,10 @@ impl FromStr for Signal {
             "OgTillLight" => Ok(Signal::OgTillLight),
             "EgFlurSpots" => Ok(Signal::EgFlurSpots),
             "EgKueche" => Ok(Signal::EgKueche),
+
+	    "eg.wohn.spots" => Ok(Signal::EgWohnSpots),
     	    "EgWohnSpots" => Ok(Signal::EgWohnSpots),
+
       	    "EgWohnMitte" => Ok(Signal::EgWohnMitte),
       	    "EgArbeitSpots" => Ok(Signal::EgArbeitSpots),
             "EgArbeitLight" => Ok(Signal::EgArbeitLight),
@@ -258,7 +267,9 @@ impl FromStr for Signal {
       	    "EgWcLight" => Ok(Signal::EgWcLight),
             "EgWohnRolloEinzel" => Ok(Signal::EgWohnRolloEinzel),
 	    "EgWohnDoseFenster" => Ok(Signal::EgWohnDoseFenster),
+	    "eg.wohn.couch_dosen" => Ok(Signal::EgWohnDosen),
   	    "EgWohnDosen" => Ok(Signal::EgWohnDosen),
+	    "eg.wohn.tv" => Ok(Signal::EgWohnDosen2),
     	    "EgWohnDosen2" => Ok(Signal::EgWohnDosen2),
       	    "OgBadSpotsWarm" => Ok(Signal::OgBadSpotsWarm),
       	    "OgBadSpotsKalt" => Ok(Signal::OgBadSpotsKalt),
@@ -280,8 +291,6 @@ enum WebCommand {
     RolloWert { signal: Signal, value: u8 },
 }
 
-use std::sync::mpsc::channel;
-use std::time::SystemTime;
 
 fn command_from_string( string: String) -> WebCommand
 {
@@ -318,7 +327,7 @@ fn command_from_string( string: String) -> WebCommand
 }
 
 //function
-fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx) {
+fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx, config: Arc<Config>) {
 
     // wait for send-requests from other threads
     loop {
@@ -523,10 +532,10 @@ async fn main() {
     let shared_data = Arc::new(Mutex::new(Wetter::new() ));
 
     let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
-    if false {
+    if true {
 	u.join_multicast_v4(
             &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-            &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
+            &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("join_multicast_v4()");
 	u.set_multicast_loop_v4(true).expect("set_multicast_loop()");
     }
 
@@ -538,7 +547,8 @@ async fn main() {
     // channel for commands from incoming http requests to knx bus
     let (tx, rx) = channel();
 
-    let _s = std::thread::spawn(move || bus_send_thread(rx, knx));
+    let config_for_send_thread = config.clone();
+    let _s = std::thread::spawn(move || bus_send_thread(rx, knx, config_for_send_thread));
     let _j = std::thread::spawn(move || bus_receive_thread(&u, bus_data));
 
 
