@@ -541,7 +541,7 @@ async fn main() {
     if true {
 	u.join_multicast_v4(
             &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-            &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("join_multicast_v4()");
+            &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
 	u.set_multicast_loop_v4(true).expect("set_multicast_loop()");
     }
 

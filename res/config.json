@@ -2,7 +2,7 @@
     "title": "TITLE",
     "version": "2021-04-31",
     "http": {
-	"listen_port": 3001
+	"listen_port": 3000
     },
     "rooms": {
 	"og.kind": { "name": "Kinderzimmer" },
