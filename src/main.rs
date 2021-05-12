@@ -227,12 +227,14 @@ enum Signal {
     EgArbeitLight,
     EgArbeitSchreibtisch,
     EgArbeitDosen,
+    EgArbeitRollo,
 
     EgEssenSpots,
     EgEssenDosen,
 
     EgWcLight,
     EgWohnRolloEinzel,
+    EgWohnRolloDoppel,
     EgWohnDoseFenster,
 
     OgBadSpotsWarm,
@@ -262,10 +264,12 @@ impl FromStr for Signal {
             "EgArbeitLight" => Ok(Signal::EgArbeitLight),
 	    "EgArbeitSchreibtisch" => Ok(Signal::EgArbeitSchreibtisch),
  	    "EgArbeitDosen" => Ok(Signal::EgArbeitDosen),
+            "EgArbeitRollo" => Ok(Signal::EgArbeitRollo),
   	    "EgEssenDosen" => Ok(Signal::EgEssenDosen),
 	    "EgEssenSpots" => Ok(Signal::EgEssenSpots),
       	    "EgWcLight" => Ok(Signal::EgWcLight),
             "EgWohnRolloEinzel" => Ok(Signal::EgWohnRolloEinzel),
+            "EgWohnRolloDoppel" => Ok(Signal::EgWohnRolloDoppel),
 	    "EgWohnDoseFenster" => Ok(Signal::EgWohnDoseFenster),
 	    "eg.wohn.couch_dosen" => Ok(Signal::EgWohnDosen),
   	    "EgWohnDosen" => Ok(Signal::EgWohnDosen),
@@ -347,6 +351,7 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx, 
 	    WebCommand::Dimmer { signal: Signal::OgBadSpotsKalt, value: x } => ( 0x020f, knx::Command::Dimmer(x)),
    	    WebCommand::Dimmer { signal: Signal::OgBadSpotsWarm, value: x } => ( 0x0212, knx::Command::Dimmer(x)),
             WebCommand::Switch { signal: Signal::EgArbeitLight, value: x } => ( 0x0402, knx::Command::Switch(x)),
+            WebCommand::RolloWert { signal: Signal::EgArbeitRollo, value: x} =>  (0x0016 /* 0/0/22 */, knx::Command::UpDownTarget(x,  200)),
             WebCommand::Dimmer { signal: Signal::EgEssenSpots, value: x } => ( 0x020A, knx::Command::Dimmer(x)),
 	    WebCommand::Switch { signal: Signal::EgEssenDosen, value: x } => ( 0x0504, knx::Command::Switch(x)),
             WebCommand::Switch { signal: Signal::EgWcLight, value: x } => ( 0x0701, knx::Command::Switch(x)),
@@ -362,6 +367,7 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx, 
             WebCommand::Dimmer{ signal: Signal::EgFlurSpots, value: x } => ( 0x0200 + 98, knx::Command::Dimmer(x)),
 
             WebCommand::RolloWert { signal: Signal::EgWohnRolloEinzel, value: x} =>  (0x0010 /* 0/0/16 */, knx::Command::UpDownTarget(x,  200)),
+            WebCommand::RolloWert { signal: Signal::EgWohnRolloDoppel, value: x} =>  (0x0012 /* 0/0/18 */, knx::Command::UpDownTarget(x,  200)),
 
             _ => { println!("command unhandled: {:?}", command); continue; }
 	};
