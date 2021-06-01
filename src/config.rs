@@ -90,19 +90,18 @@ pub struct Item {
 
 #[derive(Debug)]
 pub struct Config {
-    pub file: ConfigFile
+    pub file: ConfigFile,
+    pub base_dir: String
 }
 
 
-pub fn read_from_file(path: &str) -> Result<Arc<Config>,Error> {
+pub fn read_from_file(path: &String) -> Result<Arc<Config>,Error> {
 
-    let config_file_data = std::fs::read_to_string(path)?;
+    let config_file_data = std::fs::read_to_string(path.to_string() + "res/config.json")?;
 
     let c: ConfigFile = serde_json::from_str(&config_file_data)?;
 
-    
-
-    Ok (Arc::new(Config { file: c } ) )
+    Ok (Arc::new(Config { file: c, base_dir: path.to_string() } ) )
 }
 
 

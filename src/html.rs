@@ -71,7 +71,7 @@ pub fn create(config: &config::Config) -> Result<Html,String> {
 	for (item_id, item) in config.file.items.iter() {
 	    if item.room != *room_id { continue; }
 
-	    let mut i = ItemData { id: item_id.to_string(), name: item.name.clone(), item: item.clone() };
+	    let i = ItemData { id: item_id.to_string(), name: item.name.clone(), item: item.clone() };
 	    
 	    r.items.push (i.clone());
 	}
@@ -83,8 +83,8 @@ pub fn create(config: &config::Config) -> Result<Html,String> {
     reg.register_template_string("tpl_1", "Good afternoon, {{name}}").expect("register_template_string()");
 
     // reg.register_templates_directory();
-    reg.register_template_file("tpl_index", "res/tpl/index.html").expect("register");
-    reg.register_template_file("tpl_javascript", "res/tpl/javascript.js").expect("register");
+    reg.register_template_file("tpl_index", config.base_dir.to_string() + "res/tpl/index.html").expect("register");
+    reg.register_template_file("tpl_javascript", config.base_dir.to_string() + "res/tpl/javascript.js").expect("register");
 
     let html: Html = Html { handlebars: reg, data: data };
 

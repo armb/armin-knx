@@ -23,6 +23,8 @@ mod html;
 use html::Html;
 use config::Config;
 
+
+
 #[derive(Debug, Copy, Clone)]
 struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
 impl Received {
@@ -331,7 +333,7 @@ fn command_from_string( string: String) -> WebCommand
 }
 
 //function
-fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx, config: Arc<Config>) {
+fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx, _config: Arc<Config>) {
 
     // wait for send-requests from other threads
     loop {
@@ -491,7 +493,10 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
 #[tokio::main]
 async fn main() {
 
-    let config = config::read_from_file("res/config.json").expect("could not read config file");
+      let base_dir = "/home/armin/workspace/armin-knx/".to_string();
+//    let config = config::read_from_file(&base_dir).expect("could not read config file");
+
+    let config = config::read_from_file(&base_dir).expect("could not read config file");
 
 //    let h = html::create().expect("html::create()");
 
@@ -524,16 +529,16 @@ async fn main() {
 
     http_data.uri_data.insert(
         "/img/house.png".to_string(),
-        std::fs::read("img/house.png").unwrap());
+        std::fs::read(base_dir.to_string() + "img/house.png").unwrap());
     http_data.uri_data.insert(
         "/img/bulb-off.png".to_string(),
-        std::fs::read("img/bulb-off.png").unwrap());
+        std::fs::read(base_dir.to_string() + "img/bulb-off.png").unwrap());
     http_data.uri_data.insert(
         "/img/bulb-on.png".to_string(),
-        std::fs::read("img/bulb-on.png").unwrap());
+        std::fs::read(base_dir.to_string() + "img/bulb-on.png").unwrap());
     http_data.uri_data.insert(
         "/img/thermometer.png".to_string(),
-        std::fs::read("img/thermometer.png").unwrap());
+        std::fs::read(base_dir.to_string() + "img/thermometer.png").unwrap());
 
     let shared_data = Arc::new(Mutex::new(Wetter::new() ));
 
