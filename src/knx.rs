@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -23,20 +24,19 @@ pub struct Message {
 pub fn create() -> Knx {
     let socket = std::net::UdpSocket::bind("0.0.0.0:0").expect("bind() failed");
 
-
     socket.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
-// 	        &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("join_multicast_v4()");
+//        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
+ 	&std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("join_multicast_v4()");
 
 
     socket.connect("224.0.23.12:3671").expect("connect() failed");
-
-
+    
     let k: Knx = Knx { socket: socket };
 
     k
 }
+
 
 
 impl Knx {

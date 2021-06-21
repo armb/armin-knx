@@ -390,21 +390,25 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx, 
 
 
 
-fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
+fn bus_receive_thread(socket: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
     //    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
     let b = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo.hex").expect("Could not open file");
-    let c = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/knx_0-2-19.log").expect("Could not open file");
+//    let c = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/knx_0-2-19.log").expect("Could not open file");
 
 
     let mut logfile = std::io::BufWriter::new(a);
     let mut logfile_hex = std::io::BufWriter::new(b);
-    let mut log_0_2_19 = std::io::BufWriter::new(c);
+//    let mut log_0_2_19 = std::io::BufWriter::new(c);
 
     loop {
         let mut buf = [0_u8; 32];
-        let (len, _addr) = u.recv_from(&mut buf).expect("recv_from() failed.");
-        println!("Got {} bytes from {}: ", len, _addr);
+        let (len, _addr) = socket.recv_from(&mut buf).expect("recv_from() failed.");
+	if len < 19 {
+	    println!("socket datagram len too short (<19): {}", len);
+	    continue;
+	}
+//        println!("Got {} bytes from {}: ", len, _addr);
         let mut hex_string = std::string::String::new();
         for a in buf[0..len].iter() {
             // print!("{:02X} ", a);
@@ -413,111 +417,102 @@ fn bus_receive_thread(u: &std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
             hex_string.push_str(&c);
         }
         // https://de.wikipedia.org/wiki/KNX-Standard
-        let a_src = EibAddr(buf[8] >> 4, buf[8] & 0xf, buf[9]);
-        let a_dst = EibAddr(buf[10] >> 4, buf[10] & 0xf, buf[11]);
+        let a_src = EibAddr(buf[10] >> 4, buf[10] & 0xf, buf[11]);
+        let a_dst = EibAddr(buf[12] >> 4, buf[12] & 0xf, buf[13]);
         let _is_first = buf[9] & 0x02 != 0;
-        let r = Received { time: std::time::SystemTime::now(), source: a_src, dest: a_dst };
-
-        let d: Data = Data { received: r, hex_string: hex_string };
-        logfile_hex.write_all(format!("{:?}\n", d).as_bytes()).expect("write_all() failed");
-        logfile_hex.flush().expect("flush() failed");
-        if len < 11 {
-            println!(" too short.");
-            continue;
-        }
-
-        if a_dst == EibAddr(0, 2, 19) {
-	  // bewegung flur?
-	  log_0_2_19.write_all(format!("{:?}\n", r.time).as_bytes()).expect("write_all() failed");
+	if len < 17 {
+	    println!(" too short");
+	    continue;
 	}
-        // 0000 0010b  0x02
-        // 0000 0101b  0x05
-        // 0000 1101b  0x0d
-        if len == 15 {
-            // switch
-	    // Tills Licht AN:   10 06 00 0f 02 01 29 bc 12 04 04 01 d1 00 81
-	    // Tills Licht AUS:  10 06 00 0f 02 01 29 bc 12 04 04 01 d1 00 80
-            let onoff = buf[14] & 0x1 == 1;
-            println!("On-Off: {}", onoff);
-        }
-        if len == 16 {
-            // Wert 0..255 unsigned (z.B. Zielwert Dimmer setzen)
-            let _value = f32::from(buf[15]);
-        }
-        if len == 17 {
-            // temperature data
-            let (high, low) = (buf[15], buf[16]);
+	let data_len = len - 17;
+        let r = Received { time: std::time::SystemTime::now(), source: a_src, dest: a_dst };
+	let mut handled = false;
 
-            // SEEE EBBB  BBBB BBBB
-            let sign = 0x80 == high & 0x80;
-            let exponent = (i32::from(high) & 0x78) >> 3;
-            let base = (u16::from(high & 0x07) << 8) | u16::from(low);
+        let d: Data = Data { received:r, hex_string: hex_string };
+        logfile_hex.write_all(format!("{:?}\n", d).as_bytes()).expect("write_all() failed");
+	
+        logfile_hex.flush().expect("flush() failed");
 
-            let value = match sign {
-                true => f32::from(base) * -0.01f32 * 2.0f32.powi(exponent),
-                false => f32::from(base) * 0.01f32 * 2.0f32.powi(exponent)
-            };
+	// match a_dst {
+	//     EibAddr(a, b, c) => {
+	// 	println!("Message to: {}/{}/{}", a, b, c);
+	//     }
+	// }
 
-            let mut line: std::string::String;
-
-	    line = "".to_string();
-
-            let mut v = data.lock().unwrap();
-
-	    if r.dest == EibAddr(0, 3, 4 ) {
-		// gruppenadresse: Temperatur Till
-		let val = Measurement::Temperature (r.clone(), value);
-		line = format!("{:?}\n", &val);
-		//		        v.b = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
-                v.till = val; // copy 'Measurement'
+        let handled = match (a_dst,len) {
+	    (EibAddr(0, 2, 19),2) => {
+		// bewegung flur?
+		println!("Schalter Flur");
 	    }
-	    if r.dest == EibAddr(0, 3, 0 ) {
-		// gruppenadresse: Temperatur Schrankzimmer
-		let val = Measurement::Temperature (r.clone(), value);
-		line = format!("{:?}\n", &val);
-		//                	v.c = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
-            }
-	    if r.dest == EibAddr(0, 3, 1) {
-		// gruppenadresse: Helligkeit Flur EG
-		println!("Flur: {:?}", &value);
-		let val = Measurement::Brightness (r.clone(), value);
-		line = format!("{:?}\n", &val);
-		v.flur_brightness = val; //match val { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() };
+	    (EibAddr(0, 3, 1),19) => {
+		// bewegung flur?
+		let value = u16::from(buf[17]) << 8 | u16::from(buf[18]);
+		println!("Helligkeit Flur: {}", value);
 	    }
+            (dest,19) => {
+		// temperature data
+		let (high, low) = (buf[17], buf[18]);
 
-	    //            println!("{:?}\n", val);
-            
-            logfile.write_all(line.as_bytes()).expect("could not append to buffer");
-            logfile.flush().expect("could not write to file.")
-        }
-    }
+		// SEEE EBBB  BBBB BBBB
+		let sign = 0x80 == high & 0x80;
+		let exponent = (i32::from(high) & 0x78) >> 3;
+		let base = (u16::from(high & 0x07) << 8) | u16::from(low);
+
+		let value = match sign {
+                    true => f32::from(base) * -0.01f32 * 2.0f32.powi(exponent),
+                    false => f32::from(base) * 0.01f32 * 2.0f32.powi(exponent)
+		};
+
+		let mut line: std::string::String;
+		line = "".to_string();
+
+		let mut v = data.lock().unwrap();
+
+		match dest {
+		    EibAddr(0, 3, 4 ) => {
+			// gruppenadresse: Temperatur Till
+			let val = Measurement::Temperature (r.clone(), value);
+			line = format!("{:?}\n", &val);
+			//		        v.b = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
+			v.till = val; // copy 'Measurement'
+			println!("Temp Till: {:?}°C", value);
+		    },
+		    EibAddr(0, 3, 0 ) => {
+			// gruppenadresse: Temperatur Schrankzimmer
+			let val = Measurement::Temperature (r.clone(), value);
+			line = format!("{:?}\n", &val);
+			//                	v.c = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
+		    },
+		    EibAddr(0, 3, 1) => {
+			// gruppenadresse: Helligkeit Flur EG
+			println!("Flur: {:?}", &value);
+			let val = Measurement::Brightness (r.clone(), value);
+			line = format!("{:?}\n", &val);
+			v.flur_brightness = val; //match val { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() };
+		    },
+		    EibAddr(a, b, c) => {
+			println!("Destination address not handled (with data-len 2): {}/{}/{}",
+				 a, b, c);
+		    }
+		}
+		logfile.write_all(line.as_bytes()).expect("could not append to buffer");
+		logfile.flush().expect("could not write to file.")
+	    }
+	    (EibAddr(a, b, c),len) => {
+		println!("INFO: destination address with len not handled: {}/{}/{}, len={}",
+			     a, b, c, len);
+	    }
+	};
+    } // loop
 }
 
 
 #[tokio::main]
 async fn main() {
 
-      let base_dir = "/home/armin/workspace/armin-knx/".to_string();
-//    let config = config::read_from_file(&base_dir).expect("could not read config file");
+      let base_dir = "/home/armin/git/armin-knx/".to_string();
 
     let config = config::read_from_file(&base_dir).expect("could not read config file");
-
-//    let h = html::create().expect("html::create()");
-
-//    let r = h.render(&config, html::What::Index);
-
-//    println!("R: {}", r);
-    
-//    let _a = match plot() {
-//	Ok(x) => x,
-//	Err(_) => return () // Err("kaputt".into())
-    //    };
-
-//    let index = match html::index(&config) {
-//	Ok(x) => x,
-//	Err(_) => String::from("")
-//    };
-//    println!("Index: {}", index);
 
     for r in config.file.rooms.iter() {
 	println!("Raum: {:?}", r);
@@ -546,12 +541,12 @@ async fn main() {
 
     let shared_data = Arc::new(Mutex::new(Wetter::new() ));
 
-    let u = std::net::UdpSocket::bind("0.0.0.0:51000").expect("Could not bind socket");
+    let receive_socket = std::net::UdpSocket::bind("0.0.0.0:3671").expect("Could not bind socket");
     if true {
-	u.join_multicast_v4(
-            &std::net::Ipv4Addr::from_str("239.192.39.238").unwrap(),
-            &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
-	u.set_multicast_loop_v4(true).expect("set_multicast_loop()");
+	receive_socket.join_multicast_v4(
+            &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
+            &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("join_multicast_v4()");
+	receive_socket.set_multicast_loop_v4(true).expect("set_multicast_loop()");
     }
 
     let bus_data = shared_data.clone();
@@ -564,10 +559,11 @@ async fn main() {
 
     let config_for_send_thread = config.clone();
     let _s = std::thread::spawn(move || bus_send_thread(rx, knx, config_for_send_thread));
-    let _j = std::thread::spawn(move || bus_receive_thread(&u, bus_data));
+    let _j = std::thread::spawn(move || bus_receive_thread(receive_socket, bus_data));
 
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.file.http.listen_port));
+
     // A `Service` is needed for every connection, so this
     // creates one from our `hello_world` function.
     use hyper::server::conn::AddrStream;
@@ -597,8 +593,6 @@ async fn main() {
             }))
         }
     });
-
-
     
     // Then bind and serve...
     let server = Server::bind(&addr).serve(make_svc);
@@ -640,6 +634,6 @@ async fn main() {
 //         .border_style(&BLACK)
 //         .draw()?;
 
-//     Err("Nanu?".into())
-// //     Ok(())
+//     Err("Nanu?".Ok())
+// //     into(())
 // }
