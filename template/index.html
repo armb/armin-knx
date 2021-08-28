@@ -1,7 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <html lang="de">
   <head>
     <title>{{ title }}</title>
-    <link rel="stylesheet" href="default-style.css">
+    <link rel="stylesheet" href="default-style.css" />
     <script>
       function myFunction(body) {
       let req = new XMLHttpRequest();
@@ -41,14 +42,9 @@
   <body>
 <!--    <img src="img/house.png" width="150px" onclick="testJsonPost();" /> -->
     <!-- <hr/> -->
-    <div id="message">{{ flur_brightness }} -- {{ till }}</div> 
-
-    <div class="etage_box">
-      <h2>T&uuml;r <img src="img/house.png" width="32px" /></h2>
-      <input type="submit" value="Klingel" onclick="myFunction('Switch Klingel 1');" />
-      <input type="submit" value="Summer" onclick="myFunction('Switch Summer 1');" />
-    </div>
-
+    <!-- div id="message">{{ flur_brightness }} -- {{ till }}</div -->
+    <div id="message"></div> 
+<!--  <img src="img/house.png" width="32px" /> -->
     <div class="etage_box">
       <h2 onclick="toggleVisibility('etage_unten');">Erdgeschoss</h2>
       <div id="etage_unten" class="etage">
@@ -135,7 +131,7 @@
 	    Lampe:
 	    <img src="img/bulb-on.png" width="50"/>
 	    <input type="submit" value="aus" onclick="myFunction('Switch EgArbeitLight 0');" />
-	    <input type="submit" value="an" onclick="myFunction('Switch EgArbeitLight 1');" >
+	    <input type="submit" value="an" onclick="myFunction('Switch EgArbeitLight 1');" />
 	    <br/>
 
 	    Schreibtisch:
@@ -183,7 +179,7 @@
 	    Licht:
 	    <img src="img/bulb-on.png" width="50"/>
 	    <input type="submit" value="aus" onclick="myFunction('Switch EgWcLight 0');" />
-	    <input type="submit" value="an" onclick="myFunction('Switch EgWcLight 1');" >
+	    <input type="submit" value="an" onclick="myFunction('Switch EgWcLight 1');" />
 	  </div>
 	</div>
 
@@ -193,7 +189,7 @@
 	    Licht:
 	    <img src="img/bulb-on.png" width="50"/>
 	    <input type="submit" value="aus" onclick="myFunction('Switch EgKueche 0');" />
-	    <input type="submit" value="an" onclick="myFunction('Switch EgKueche 1');" >
+	    <input type="submit" value="an" onclick="myFunction('Switch EgKueche 1');" />
 	  </div>
 	</div>
       </div>
@@ -207,7 +203,7 @@
 	  <div id="till" class="room">
 <!--	    <div class="temperature">  -->
 	    Temperatur:
-            <img class="thermometer" src="img/thermometer.png" width="25"/> {{ till }} &deg;C
+            <img class="thermometer" src="img/thermometer.png" width="25"/> {{ till }} °C
             <br/>
 <!--	    </div> -->
 
@@ -237,6 +233,12 @@
 	</div>
       </div>
     </div><!-- etage_box -->
+
+    <div class="etage_box">
+      <h2>T&uuml;r</h2>
+      <input type="submit" value="Klingel" onclick="myFunction('Switch Klingel 1');" />
+      <input type="submit" value="Summer" onclick="myFunction('Switch Summer 1');" />
+    </div>
 
 
   </body>

@@ -139,7 +139,11 @@ fn http_get_request_handler(req: Request<Body>,
             eprintln!("GET '{:?}': could not render template", req.uri());
             return Ok(Response::builder().status(hyper::StatusCode::NOT_FOUND).body("Not found.".into()).unwrap());
         } else {
-            return Ok(Response::builder().status(200).body(output.unwrap().into()).unwrap());
+            return Ok(Response::builder()
+		      .status(200)
+		      .header("Content-Type", "text/html")
+		      .body(output.unwrap().into())
+		      .unwrap());
         }
     }
 
