@@ -11,17 +11,17 @@ pub fn parse_addr(s: &str) -> Result<EibAddr,Error> {
     // haupt/mittel/untergruppe
     let re = regex::Regex::new(r"^(?P<haupt>[[:digit:]]+)/(?P<mittel>[[:digit:]]+)/(?P<unter>[[:digit:]]+)$").unwrap();
     match re.captures(s) {
-	Some(cap) => {
-	    let a = EibAddr(
-		cap["haupt"].parse::<u8>().unwrap(),
-		cap["mittel"].parse::<u8>().unwrap(),
-		cap["unter"].parse::<u8>().unwrap());
+        Some(cap) => {
+            let a = EibAddr(
+                cap["haupt"].parse::<u8>().unwrap(),
+                cap["mittel"].parse::<u8>().unwrap(),
+                cap["unter"].parse::<u8>().unwrap());
 
-	    Ok(a)
-	},
-	None => {
-	    Err( Error::GenericError( format!("address '{}' does not match format 'x/y/z'", s) ))
-	}
+            Ok(a)
+        },
+        None => {
+            Err( Error::GenericError( format!("address '{}' does not match format 'x/y/z'", s) ))
+        }
     }
 }
 
@@ -46,12 +46,12 @@ pub enum Error {
 
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Error {
-	Error::ParseError(err)
+        Error::ParseError(err)
     }
 }
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Error {
-	Error::IoError(err)
+        Error::IoError(err)
     }
 }
 
@@ -107,18 +107,18 @@ pub fn read_from_file(path: &String) -> Result<Arc<Config>,Error> {
 
 impl Config {
     pub fn get_write_addr(&self, id: &str) -> Result<EibAddr,Error> {
-	match self.file.items.get(id) {
-	    // not in database
-	    None => Err(Error::NotFound),
+        match self.file.items.get(id) {
+            // not in database
+            None => Err(Error::NotFound),
 
-	    // found item
-	    Some(item) => {
-		match &item.knx_write_group {
-		    // item has no address
-		    None => Err(Error::NotFound),
-		    Some(addr_string) => parse_addr(&addr_string)
-		}
-	    }
-	}
+            // found item
+            Some(item) => {
+                match &item.knx_write_group {
+                    // item has no address
+                    None => Err(Error::NotFound),
+                    Some(addr_string) => parse_addr(&addr_string)
+                }
+            }
+        }
     }
 }
