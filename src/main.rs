@@ -84,6 +84,8 @@ struct HttpData {
 
 
 use std::sync::mpsc::Sender;
+use tokio::task::JoinHandle;
+use crate::Measurement::{Temperature, Brightness};
 
 
 // function never fails (always generates a Response<Body>)
@@ -404,7 +406,7 @@ fn bus_receive_thread(socket: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
     loop {
         let mut buf = [0_u8; 32];
         let (len, _addr) = socket.recv_from(&mut buf).expect("recv_from() failed.");
-        if len < 19 {
+        if len < 17 {
             println!("socket datagram len too short (<19): {}", len);
             continue;
         }
@@ -443,6 +445,12 @@ fn bus_receive_thread(socket: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
                 // bewegung flur?
                 let value = u16::from(buf[17]) << 8 | u16::from(buf[18]);
                 println!("Helligkeit Flur: {}", value);
+                let val = Brightness(r.clone(), value as f32);
+                let mut line: std::string::String;
+                line = format!("{:?}\n", &val);
+                println!("Helligkeit 'Brightness': {:?}\n", &val);
+                logfile.write_all(line.as_bytes()).expect("could not append to buffer");
+                logfile.flush().expect("could not write to file.")
             }
             (dest,19) => {
                 // temperature data
@@ -536,12 +544,21 @@ async fn main() {
 
     let shared_data = Arc::new(Mutex::new(Wetter::new() ));
 
-    let receive_socket = std::net::UdpSocket::bind("0.0.0.0:3671").expect("Could not bind socket");
+    let receive_socket : Option<std::net::UdpSocket>;
     if true {
-        receive_socket.join_multicast_v4(
-            &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
-            &std::net::Ipv4Addr::from_str("192.168.0.208").unwrap()).expect("join_multicast_v4()");
-        receive_socket.set_multicast_loop_v4(true).expect("set_multicast_loop()");
+        receive_socket = match std::net::UdpSocket::bind("0.0.0.0:3671") {
+            Ok(s) => {
+                s.join_multicast_v4(&std::net::Ipv4Addr::from_str("224.0.23.12").expect("from_str"),
+                                    &std::net::Ipv4Addr::from_str("192.168.0.209").expect("from_str"))
+                    .expect("join_multicast_v4()");
+                s.set_multicast_loop_v4(true)
+                    .expect("set_multicast_loop()");
+                Some(s)
+            },
+            Err(e) => None, //expect("Could not bind socket")
+        };
+    } else {
+        receive_socket = None;
     }
 
     let bus_data = shared_data.clone();
@@ -552,9 +569,13 @@ async fn main() {
     // channel for commands from incoming http requests to knx bus
     let (tx, rx) = channel();
 
+    let rx_thread : Option<std::thread::JoinHandle<_>> = match receive_socket {
+        Some(sock) => Some(std::thread::spawn(move || bus_receive_thread(sock, bus_data))),
+        None => None
+    };
+
     let config_for_send_thread = config.clone();
     let _s = std::thread::spawn(move || bus_send_thread(rx, knx, config_for_send_thread));
-    let _j = std::thread::spawn(move || bus_receive_thread(receive_socket, bus_data));
 
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.file.http.listen_port));
