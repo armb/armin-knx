@@ -27,5 +27,8 @@
 	"eg.wohn.spots": { "name": "Spots", "icon": "dimmer", "room": "eg.wohn", "knx_write_group": "0/2/1", "knx_type": "Dimmer" },
 
 	"eg.essen.spots": { "name": "Spots", "icon": "dimmer", "room": "eg.essen", "knx_write_group": "0/2/1", "knx_type": "Dimmer" }
-    }
+    },
+	"sensors" : {
+		"og.kind.temp": { "name":  "Temperatur", "type":  "temperature", "room":  "og.kind" }
+	}
 }

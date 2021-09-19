@@ -1,32 +1,33 @@
-use std::sync::{Arc, Mutex};
-use std::str::FromStr;
-use std::net::{TcpStream, SocketAddr};
-use std::io::{Write, BufRead};
-
 use std::collections::HashMap;
-use std::string::String;
 use std::convert::Infallible;
-use hyper::body;
-use hyper::{Body, Request, Response, Server};
-
+use std::io::{BufRead, Write};
+use std::net::{SocketAddr, TcpStream};
+use std::str::FromStr;
+use std::string::String;
+use std::sync::{Arc, Mutex};
+use std::sync::mpsc::channel;
+use std::sync::mpsc::Sender;
 // use std::time::{Duration, Instant};
 use std::time::SystemTime;
 
-use std::sync::mpsc::channel;
+use hyper::{Body, Request, Response, Server};
+use hyper::body;
+use tokio::task::JoinHandle;
 
+use config::Config;
+use html::Html;
+use sensors::Wetter;
 
+use crate::Measurement::{Brightness, Temperature};
+use std::ops::Add;
 
 mod knx;
 mod config;
 mod html;
-
-use html::Html;
-use config::Config;
-
-
+mod sensors;
 
 #[derive(Debug, Copy, Clone)]
-struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
+pub struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
 impl Received {
     pub fn _new() -> Self {
         Self {
@@ -39,10 +40,10 @@ impl Received {
 
 
 #[derive(Debug, Copy, Clone)]
-enum Measurement {
+pub enum Measurement {
     _Error,
     Undefined,
-    Temperature(Received, f32), // Deg Celsius
+    Temperature(Received, f32), // Deg Celsiuspub
     Brightness(Received, f32), // Lux
 }
 
@@ -61,31 +62,11 @@ struct Data { received: Received, hex_string: String }
 struct EibAddr(u8, u8, u8);
 
 #[derive(Debug)]
-struct Wetter {
-    till: Measurement,
-    flur_brightness: Measurement,
-}
-impl Wetter {
-    pub fn new() -> Self {
-        Self {
-            till: Measurement::Undefined,
-            flur_brightness: Measurement::Undefined,
-        }
-    }
-}
-
-#[derive(Debug)]
 struct HttpData {
     index: String,
     html: Html,
     uri_data: HashMap<String, Vec<u8>>,
 }
-
-
-
-use std::sync::mpsc::Sender;
-use tokio::task::JoinHandle;
-use crate::Measurement::{Temperature, Brightness};
 
 
 // function never fails (always generates a Response<Body>)
@@ -94,7 +75,7 @@ fn http_get_request_handler(req: Request<Body>,
                             remote_addr: SocketAddr,
                             wetter: Arc<Mutex<Wetter>>) -> Result<Response<Body>, Infallible> {
 
-    eprintln!("debug:  GET {:#?}", req);
+    // eprintln!("debug:  GET {:#?}", req);
 
     let mut handlebars = handlebars::Handlebars::new();
 
@@ -111,7 +92,7 @@ fn http_get_request_handler(req: Request<Body>,
 
     handlebars.register_template_file("/", "template/index.html").expect("Could not register root uri");
 
-    let mut _w = wetter.lock().unwrap();
+   //  let mut _w = wetter.lock().unwrap();
     // wetter.lock()a.push('.');
 
     //        _w.a.push('.');
@@ -129,53 +110,48 @@ fn http_get_request_handler(req: Request<Body>,
         title: "Haus".to_owned(),
         bar: 1231,
         addr: format!("{:?}", remote_addr.to_string()),
-        flur_brightness: match _w.flur_brightness { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() },
-        till: match _w.till { Measurement::Temperature(_, t) => t.to_string(), _ => "".to_string() },
+        flur_brightness: "A".into(), //match _w.flur_brightness { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() },
+        till: "B".into() //match _w.till { Measurement::Temperature(_, t) => t.to_string(), _ => "".to_string() },
     };
 
-    let uri = req.uri().to_string();
+    let uri = req.uri().path();
 
     if handlebars.has_template(&uri) {
         let output = handlebars.render(&uri, &info);
         if output.is_err() {
             eprintln!("GET '{:?}': could not render template", req.uri());
-            return Ok(Response::builder().status(hyper::StatusCode::NOT_FOUND).body("Not found.".into()).unwrap());
+            Ok(Response::builder().status(hyper::StatusCode::NOT_FOUND)
+                .header("Content-Type", "text/html; charset=utf8").body("Not found.".into()).unwrap())
         } else {
-            return Ok(Response::builder()
-		      .status(200)
-		      .header("Content-Type", "text/html")
-		      .body(output.unwrap().into())
-		      .unwrap());
+            Ok(Response::builder()
+                .status(200)
+                .header("Content-Type", "text/html; charset=utf8")
+                .body(output.unwrap().into())
+                .unwrap())
+        }
+    } else {
+        match uri {
+            "/sensors.json" => {
+                let w = wetter.lock().expect("lock()");
+                let mut t : String = "{\"a\":1".into();
+                match w.flur_brightness {
+                    Brightness(_, val) => { t.push_str( &format!(", \"eg.flur.brightness\":{:}", val)); },
+                    _ => {}
+                };
+                match w.till {
+                    Temperature(_, val) => { t.push_str( &format!(", \"og.till.temperature\":{:}", val)); },
+                    _ => {}
+                };
+                t.push_str("}");
+                let resp = Response::builder().status(hyper::StatusCode::OK).body(t.into());
+                Ok(resp.unwrap())
+            },
+            _ => {
+                // not found -> Nevertheless, return with Infallible to send a response to the client
+                Ok(Response::builder().status(hyper::StatusCode::NOT_FOUND).body("Not found.".into()).unwrap())
+            }
         }
     }
-
-    if uri == "/Hallo" {
-        let res_build = Response::builder();
-        let a = http_data.html.render(html::What::Index); //.expect("template");
-//	let body = hyper::Body::from(a);
-        let response = res_build.body(a.into());
-        return Ok(response.unwrap());
-    }
-
-    let body = http_data.uri_data.get(&uri);
-
-    // let b: hyper::Body = hyper::Body::from(body.unwrap());
-    match body {
-        Some(b) => {
-            let c = b.to_vec();
-            let response = Response::builder().status(200).body(c.into()).unwrap();
-            return Ok(response);
-        },
-        _ => ()
-    }
-
-    // 'Error'
-    let response = Response::builder()
-        .status(hyper::StatusCode::BAD_REQUEST)
-        .body("Error...".into())
-        .unwrap();
-
-    Ok(response)
 }
 
 
@@ -392,7 +368,7 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx, 
 
 
 
-fn bus_receive_thread(socket: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
+fn bus_receive_thread(socket: std::net::UdpSocket, sensors: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
     //    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
     let b = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo.hex").expect("Could not open file");
@@ -446,11 +422,15 @@ fn bus_receive_thread(socket: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
                 let value = u16::from(buf[17]) << 8 | u16::from(buf[18]);
                 println!("Helligkeit Flur: {}", value);
                 let val = Brightness(r.clone(), value as f32);
+
+                let mut sensor_data = sensors.lock().expect("lock()");
+
                 let mut line: std::string::String;
                 line = format!("{:?}\n", &val);
                 println!("Helligkeit 'Brightness': {:?}\n", &val);
                 logfile.write_all(line.as_bytes()).expect("could not append to buffer");
-                logfile.flush().expect("could not write to file.")
+                logfile.flush().expect("could not write to file.");
+                sensor_data.flur_brightness = val;
             }
             (dest,19) => {
                 // temperature data
@@ -469,16 +449,15 @@ fn bus_receive_thread(socket: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
                 let mut line: std::string::String;
                 line = "".to_string();
 
-                let mut v = data.lock().unwrap();
-
                 match dest {
                     EibAddr(0, 3, 4 ) => {
                         // gruppenadresse: Temperatur Till
                         let val = Measurement::Temperature (r.clone(), value);
                         line = format!("{:?}\n", &val);
                         //		        v.b = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
-                        v.till = val; // copy 'Measurement'
                         println!("Temp Till: {:?}°C", value);
+                        let mut sensor_data = sensors.lock().expect("lock()");
+                        sensor_data.till = val;
                     },
                     EibAddr(0, 3, 0 ) => {
                         // gruppenadresse: Temperatur Schrankzimmer
@@ -489,9 +468,10 @@ fn bus_receive_thread(socket: std::net::UdpSocket, data: Arc<Mutex<Wetter>>) {
                     EibAddr(0, 3, 1) => {
                         // gruppenadresse: Helligkeit Flur EG
                         println!("Flur: {:?}", &value);
+                        let mut sensor_data = sensors.lock().expect("lock()");
                         let val = Measurement::Brightness (r.clone(), value);
                         line = format!("{:?}\n", &val);
-                        v.flur_brightness = val; //match val { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() };
+                        sensor_data.flur_brightness = val; //match val { Measurement::Brightness(_, t) => t.to_string(), _ => "".to_string() };
                     },
                     EibAddr(a, b, c) => {
                         println!("Destination address not handled (with data-len 2): {}/{}/{}",

@@ -5,6 +5,7 @@ extern crate handlebars;
 
 use handlebars::Handlebars;
 use crate::config;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug)]
 pub struct Html {
@@ -40,21 +41,22 @@ struct Data {
 #[derive(PartialEq)]
 pub enum What {
     Index,
-    JavaScript
+    JavaScript,
+    SensorData
 }
 
 
 impl Html {
-    pub fn render(&self, what: What) -> String {
+    pub fn render(&self, what: What, sensor_data : Arc<Mutex<crate::sensors::Wetter> >) -> String {
 
-	if what == What::JavaScript {
-	    let r = self.handlebars.render("tpl_javascript", &String::from("")).expect("render()");
-	    return r;
-	}
-
-	let r = self.handlebars.render("tpl_index", &self.data).expect("render()");
-
-	r
+        match what {
+            What::JavaScript =>
+                self.handlebars.render("tpl_javascript", &String::from("")).expect("render()"),
+            What::SensorData => {
+                "".into()
+            },
+            _ => self.handlebars.render("tpl_index", &self.data).expect("render()")
+        }
     }
 }
 
@@ -80,11 +82,11 @@ pub fn create(config: &config::Config) -> Result<Html,String> {
     }
 
 
-    reg.register_template_string("tpl_1", "Good afternoon, {{name}}").expect("register_template_string()");
+  //  reg.register_template_string("tpl_1", "Good afternoon, {{name}}").expect("register_template_string()");
 
     // reg.register_templates_directory();
-    reg.register_template_file("tpl_index", config.base_dir.to_string() + "res/tpl/index.html").expect("register");
-    reg.register_template_file("tpl_javascript", config.base_dir.to_string() + "res/tpl/javascript.js").expect("register");
+  //  reg.register_template_file("tpl_index", config.base_dir.to_string() + "res/tpl/index.html").expect("register");
+  //  reg.register_template_file("tpl_javascript", config.base_dir.to_string() + "res/tpl/javascript.js").expect("register");
 
     let html: Html = Html { handlebars: reg, data: data };
 

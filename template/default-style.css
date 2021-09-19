@@ -9,17 +9,7 @@ body {
     background-color: #0da0a0;
     color: gray;
     padding: 0px 0px;
-
 }
-
-#etage_oben {
-    background-color: #20c0c0;
-}
-
-#etage_unten {
-    background-color: #20c0c0;
-}
-
 
 .etage_box {
     padding: 10px;
@@ -34,15 +24,16 @@ body {
 }
 
 .room_box {
-    padding: 10px;
+    padding: 5px;
+    margin: 2px;
     border: 1px solid black;
     border-radius: 0.25em;
-
+    background-color: #20c0c0;
 }
 
 .room {
     display: none;
-    margin: 10px;
+    margin: 0px;
     background-color: #c0c0c0;
 
     //    border: 2px solid silver;
@@ -78,7 +69,7 @@ h2 {
     font-size: 32px;
     text-align: left;
     color: white;
-    margin: 20px 0px 0px 0px;
+    margin: 10px 0px 0px 0px;
 }
 
 
