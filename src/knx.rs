@@ -25,8 +25,8 @@ pub fn create() -> Knx {
 
     socket.join_multicast_v4(
         &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
-//        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
-        &std::net::Ipv4Addr::from_str("192.168.0.209").unwrap()).expect("join_multicast_v4()");
+        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
+//        &std::net::Ipv4Addr::from_str("192.168.0.209").unwrap()).expect("join_multicast_v4()");
 
 
     socket.connect("224.0.23.12:3671").expect("connect() failed");

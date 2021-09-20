@@ -368,7 +368,7 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx, 
 
 
 
-fn bus_receive_thread(socket: std::net::UdpSocket, sensors: Arc<Mutex<Wetter>>) {
+fn bus_receive_thread(socket: socket2::Socket, sensors: Arc<Mutex<Wetter>>) {
     let a = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo").expect("Could not open file");
     //    let b = std::fs::OpenOptions::new().create(true).append(true).open("/home/arbu272638/arbu-eb-rust.knx.log").expect("Could not open file");
     let b = std::fs::OpenOptions::new().create(true).append(true).open("/tmp/foo.hex").expect("Could not open file");
@@ -386,7 +386,7 @@ fn bus_receive_thread(socket: std::net::UdpSocket, sensors: Arc<Mutex<Wetter>>) 
             println!("socket datagram len too short (<19): {}", len);
             continue;
         }
-        println!("Got {} bytes from {}: ", len, _addr);
+        println!("Got {} bytes from {:?}: ", len, _addr);
         let mut hex_string = std::string::String::new();
         for a in buf[0..len].iter() {
             // print!("{:02X} ", a);
@@ -493,7 +493,7 @@ fn bus_receive_thread(socket: std::net::UdpSocket, sensors: Arc<Mutex<Wetter>>) 
 #[tokio::main]
 async fn main() {
 
-    let base_dir = "/home/armin/git/armin-knx/".to_string();
+    let base_dir = "/home/armin/workspace/armin-knx/".to_string();
 
     let config = config::read_from_file(&base_dir).expect("could not read config file");
 
@@ -524,23 +524,25 @@ async fn main() {
 
     let shared_data = Arc::new(Mutex::new(Wetter::new() ));
 
-    let receive_socket : Option<std::net::UdpSocket>;
-    if true {
-        receive_socket = match std::net::UdpSocket::bind("0.0.0.0:3671") {
-            Ok(s) => {
-                s.join_multicast_v4(&std::net::Ipv4Addr::from_str("224.0.23.12").expect("from_str"),
-                                    &std::net::Ipv4Addr::from_str("192.168.0.209").expect("from_str"))
-                    .expect("join_multicast_v4()");
-                s.set_multicast_loop_v4(true)
-                    .expect("set_multicast_loop()");
-                Some(s)
-            },
-            Err(e) => None, //expect("Could not bind socket")
-        };
-    } else {
-        receive_socket = None;
-    }
+    // sockaddr2 required for reuse_address/reuse_port
+    let receive_socket = socket2::Socket::new(
+	    socket2::Domain::ipv4(),
+	    socket2::Type::dgram(),
+	    Some(socket2::Protocol::udp()))
+	    .expect("ipv4 dgram socket");
+        receive_socket.set_multicast_loop_v4(true)
+            .expect("set_multicast_loop()");
+    receive_socket.set_reuse_address(true).expect("reuse addr error");
+    receive_socket.set_reuse_port(true).expect("reuse addr error");
+    receive_socket.join_multicast_v4(
+	    &std::net::Ipv4Addr::from_str("224.0.23.12").expect("from_str"),
+            &std::net::Ipv4Addr::from_str("192.168.0.90").expect("from_str"))
+           .expect("join_multicast_v4()");
 
+
+    let sock_addr: SocketAddr = "0.0.0.0:3671".parse().unwrap();
+    receive_socket.bind(&sock_addr.into()).expect("bind socket");
+    
     let bus_data = shared_data.clone();
 
     let knx = knx::create();
@@ -549,10 +551,7 @@ async fn main() {
     // channel for commands from incoming http requests to knx bus
     let (tx, rx) = channel();
 
-    let rx_thread : Option<std::thread::JoinHandle<_>> = match receive_socket {
-        Some(sock) => Some(std::thread::spawn(move || bus_receive_thread(sock, bus_data))),
-        None => None
-    };
+    let rx_thread = std::thread::spawn(move || bus_receive_thread(receive_socket, bus_data));
 
     let config_for_send_thread = config.clone();
     let _s = std::thread::spawn(move || bus_send_thread(rx, knx, config_for_send_thread));
