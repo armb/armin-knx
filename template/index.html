@@ -74,6 +74,12 @@
     <div id="message"></div>
 <!--  <img src="img/house.png" width="32px" /> -->
     <div class="etage_box">
+      <h2>T&uuml;r</h2>
+      <!--       <input type="submit" value="Klingel" onclick="myFunction('Switch Klingel 1');" /> -->
+      <input type="submit" value="Summer" class="buttonSummer" onclick="myFunction('Switch Summer 1');" />
+    </div>
+
+    <div class="etage_box">
       <h2 onclick="toggleVisibility('etage_unten');">Erdgeschoss</h2>
       <div id="etage_unten" class="etage">
 	<div class="room_box">
@@ -257,13 +263,25 @@
 	</div>
       </div>
     </div>
-</div>
+
     <div class="etage_box">
-      <h2>T&uuml;r</h2>
-      <input type="submit" value="Klingel" onclick="myFunction('Switch Klingel 1');" />
-      <input type="submit" value="Summer" onclick="myFunction('Switch Summer 1');" />
-    </div>
+      <h2 onclick="toggleVisibility('keller');">Keller</h2>
+      <div id="keller" class="etage">
+	<div class="room_box">
+	  <h3 onclick="toggleVisibility('waschkueche')">Waschküche</h3>
+	  <div id="waschkueche" class="room">
+	    Lichterkette:
+	    <!-- img src="img/bulb-on.png" width="50"/ -->
+	    <input type="submit" value="Aus" onclick="myFunction('Switch KellerTrockner 0');" />
+	    <input type="submit" value="An" onclick="myFunction('Switch KellerTrockner 1');" />
 
-
+	    Garage:
+	    <!-- img src="img/bulb-on.png" width="50"/ -->
+	    <input type="submit" value="Aus" onclick="myFunction('Switch KellerGarage 0');" />
+	    <input type="submit" value="An" onclick="myFunction('Switch KellerGarage 1');" />
+	  </div>
+      </div><!-- room -->
+      </div><!-- etage -->
+  </div>
   </body>
 </html>

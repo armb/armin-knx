@@ -227,7 +227,10 @@ enum Signal {
     OgSchlafzimmer,
 
     Klingel,
-    Summer
+    Summer,
+
+    KellerTrockner,
+    KellerGarage,
 }
 
 
@@ -265,6 +268,9 @@ impl FromStr for Signal {
             "OgSchlafzimmer" => Ok(Signal::OgSchlafzimmer),
             "Klingel" => Ok(Signal::Klingel),
             "Summer" => Ok(Signal::Summer),
+
+	    "KellerTrockner" => Ok(Signal::KellerTrockner),
+    	    "KellerGarage" => Ok(Signal::KellerGarage),
             _ => Err( () ),
         }
     }
@@ -345,6 +351,8 @@ fn bus_send_thread(rx: std::sync::mpsc::Receiver<KnxPacket>, mut knx: knx::Knx, 
 
             WebCommand::Switch { signal: Signal::Klingel, value: x } => ( 0x0600, knx::Command::Switch(x)),
             WebCommand::Switch { signal: Signal::Summer, value: x } => ( 0x0602, knx::Command::Switch(x)),
+            WebCommand::Switch { signal: Signal::KellerTrockner, value: x } => ( 0x0101, knx::Command::Switch(x)),
+	                WebCommand::Switch { signal: Signal::KellerGarage, value: x } => ( 0x0109, knx::Command::Switch(x)),
 
             WebCommand::Switch { signal: Signal::OgTillLight, value: x } => ( 0x0401, knx::Command::Switch(x)),
 
