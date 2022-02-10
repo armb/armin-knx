@@ -27,7 +27,12 @@ mod html;
 mod sensors;
 
 #[derive(Debug, Copy, Clone)]
-pub struct Received { time: std::time::SystemTime, source: EibAddr, dest: EibAddr }
+pub struct Received {
+    time: std::time::SystemTime,
+    source: EibAddr,
+    dest: EibAddr
+}
+
 impl Received {
     pub fn _new() -> Self {
         Self {
@@ -394,7 +399,7 @@ fn bus_receive_thread(socket: socket2::Socket, sensors: Arc<Mutex<Wetter>>) {
             println!("socket datagram len too short (<19): {}", len);
             continue;
         }
-        println!("Got {} bytes from {:?}: ", len, _addr);
+//        println!("Got {} bytes from {:?}: ", len, _addr);
         let mut hex_string = std::string::String::new();
         for a in buf[0..len].iter() {
             // print!("{:02X} ", a);
@@ -428,14 +433,14 @@ fn bus_receive_thread(socket: socket2::Socket, sensors: Arc<Mutex<Wetter>>) {
             (EibAddr(0, 3, 1),19) => {
                 // bewegung flur?
                 let value = u16::from(buf[17]) << 8 | u16::from(buf[18]);
-                println!("Helligkeit Flur: {}", value);
+  //              println!("Helligkeit Flur: {}", value);
                 let val = Brightness(r.clone(), value as f32);
 
                 let mut sensor_data = sensors.lock().expect("lock()");
 
                 let mut line: std::string::String;
                 line = format!("{:?}\n", &val);
-                println!("Helligkeit 'Brightness': {:?}\n", &val);
+//                println!("Helligkeit 'Brightness': {:?}\n", &val);
                 logfile.write_all(line.as_bytes()).expect("could not append to buffer");
                 logfile.flush().expect("could not write to file.");
                 sensor_data.flur_brightness = val;
@@ -463,7 +468,7 @@ fn bus_receive_thread(socket: socket2::Socket, sensors: Arc<Mutex<Wetter>>) {
                         let val = Measurement::Temperature (r.clone(), value);
                         line = format!("{:?}\n", &val);
                         //		        v.b = match val { Measurement::Temperature(_, t) => t.to_string(), _ => 0.to_string() };
-                        println!("Temp Till: {:?}°C", value);
+//                        println!("Temp Till: {:?}°C", value);
                         let mut sensor_data = sensors.lock().expect("lock()");
                         sensor_data.till = val;
                     },
@@ -475,7 +480,7 @@ fn bus_receive_thread(socket: socket2::Socket, sensors: Arc<Mutex<Wetter>>) {
                     },
                     EibAddr(0, 3, 1) => {
                         // gruppenadresse: Helligkeit Flur EG
-                        println!("Flur: {:?}", &value);
+//                        println!("Flur: {:?}", &value);
                         let mut sensor_data = sensors.lock().expect("lock()");
                         let val = Measurement::Brightness (r.clone(), value);
                         line = format!("{:?}\n", &val);
