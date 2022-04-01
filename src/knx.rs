@@ -20,12 +20,12 @@ pub struct Message {
 }
 
 
-pub fn create() -> Knx {
+pub fn create(multicast_group: &str, interface: &str) -> Knx {
     let socket = std::net::UdpSocket::bind("0.0.0.0:0").expect("bind() failed");
 
     socket.join_multicast_v4(
-        &std::net::Ipv4Addr::from_str("224.0.23.12").unwrap(),
-        &std::net::Ipv4Addr::from_str("192.168.0.90").unwrap()).expect("join_multicast_v4()");
+        &std::net::Ipv4Addr::from_str(multicast_group).unwrap(),
+        &std::net::Ipv4Addr::from_str(interface).unwrap()).expect("join_multicast_v4()");
 //        &std::net::Ipv4Addr::from_str("192.168.0.209").unwrap()).expect("join_multicast_v4()");
 
 

@@ -558,7 +558,7 @@ async fn main() {
     
     let bus_data = shared_data.clone();
 
-    let knx = knx::create();
+    let knx = knx::create("224.0.23.12", "192.168.0.209");
 
 
     // channel for commands from incoming http requests to knx bus
