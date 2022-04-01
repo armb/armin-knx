@@ -1,15 +1,15 @@
 {
-    "title": "TITLE",
-    "version": "2021-04-31",
-    "http": {
+	"title": "TITLE",
+	"version": "2021-04-31",
+	"http": {
 	"listen_port": 3000
-    },
-    "rooms": {
+	},
+	"rooms": {
 	"og.kind": { "name": "Kinderzimmer" },
 	"eg.arbeit": { "name": "Arbeitszimmer" },
 	"eg.wohn": { "name": "Wohnzimmer" }
-    },
-    "items": {
+	},
+	"items": {
 	"bell": { "name": "Klingel", "room": "", "knx_write_group": "0/2/1", "knx_type": "Bell" },
 	"dooropener": { "name": "Summer", "room": "", "knx_write_group": "0/2/1", "knx_type": "DoorOpener" },
 
