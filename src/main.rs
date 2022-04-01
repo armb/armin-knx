@@ -18,7 +18,8 @@ use config::Config;
 use html::Html;
 use sensors::Wetter;
 
-use crate::Measurement::{Brightness, Temperature};
+use crate::sensors::Measurement;
+use crate::sensors::Measurement::{Brightness, Temperature};
 use std::ops::Add;
 
 mod knx;
@@ -43,14 +44,6 @@ impl Received {
     }
 }
 
-
-#[derive(Debug, Copy, Clone)]
-pub enum Measurement {
-    _Error,
-    Undefined,
-    Temperature(Received, f32), // Deg Celsiuspub
-    Brightness(Received, f32), // Lux
-}
 
 #[derive(Debug, Copy, Clone)]
 struct Sample {
@@ -166,6 +159,7 @@ async fn http_request_handler(req: Request<Body>,
                               wetter: Arc<Mutex<Wetter>>,
                               tx: Sender<KnxPacket>) -> Result<Response<Body>, Infallible> {
     let m = req.method().clone();
+
 
     if m == hyper::Method::PUT {
         let bytes = body::to_bytes(req.into_body()).await.expect("failed!");
@@ -429,8 +423,11 @@ fn bus_receive_thread(socket: socket2::Socket, sensors: Arc<Mutex<Wetter>>) {
             (EibAddr(0, 2, 19),2) => {
                 // bewegung flur?
                 println!("Schalter Flur");
-            }
-            (EibAddr(0, 3, 1),19) => {
+            },
+            (dest,17) => {
+                println!("len 17:   received from {:?}", dest);
+            },
+            (EibAddr(0, 3, 1),19)  => {
                 // bewegung flur?
                 let value = u16::from(buf[17]) << 8 | u16::from(buf[18]);
   //              println!("Helligkeit Flur: {}", value);
@@ -444,7 +441,16 @@ fn bus_receive_thread(socket: socket2::Socket, sensors: Arc<Mutex<Wetter>>) {
                 logfile.write_all(line.as_bytes()).expect("could not append to buffer");
                 logfile.flush().expect("could not write to file.");
                 sensor_data.flur_brightness = val;
-            }
+            },
+            (EibAddr(0, 2, 2),18) => {
+                let value = buf[17];
+                println!("Dimmer Zielwert Wohnzimmer Spots: {}", value);
+                let mut sensor_data = sensors.lock().expect("lock()");
+            },
+            (EibAddr(0, 2, 1),18) => {
+                let value = buf[17];
+                println!("Dimmer Zielwert Wohnzimmer Mitte: {}", value);
+            },
             (dest,19) => {
                 // temperature data
                 let (high, low) = (buf[17], buf[18]);
@@ -547,7 +553,7 @@ async fn main() {
             .expect("set_multicast_loop()");
     receive_socket.set_reuse_address(true).expect("reuse addr error");
     receive_socket.set_reuse_port(true).expect("reuse addr error");
-    receive_socket.join_multicast_v4(
+    receive_socket.join_multicast_v4(// 239.192.39.238 // 224.0.23.12
 	    &std::net::Ipv4Addr::from_str("224.0.23.12").expect("from_str"),
             &std::net::Ipv4Addr::from_str("192.168.0.90").expect("from_str"))
            .expect("join_multicast_v4()");
