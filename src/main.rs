@@ -512,7 +512,7 @@ fn bus_receive_thread(socket: socket2::Socket, sensors: Arc<Mutex<Wetter>>) {
 #[tokio::main]
 async fn main() {
 
-    let base_dir = "/home/armin/workspace/armin-knx/".to_string();
+    let base_dir = "/home/armin/git/armin-knx/".to_string();
 
     let config = config::read_from_file(&base_dir).expect("could not read config file");
 

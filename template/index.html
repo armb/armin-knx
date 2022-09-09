@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <html lang="de">
   <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
     <title>{{ title }}</title>
     <link rel="stylesheet" href="default-style.css" />
     <script>
@@ -13,10 +14,10 @@
 
 	  function updateSensorData(body) {
 		  let req = new XMLHttpRequest();
-		  let url = "/sensors.json";
+		  let url = "https://n.arbu.eu/knx/sensors.json";
 		  req.overrideMimeType("application/json");
 		  req.responseType = 'application/json';
-		  req.open("GET", "/sensors.json");
+		  req.open("GET", "sensors.json");
 		  req.onload = function () {
 		  	console.log("content = '" + req.responseText + "'");
 			  const my_json = JSON.parse(req.responseText);
