@@ -1,7 +1,41 @@
+use std::net::{Ipv4Addr, SocketAddr};
+use std::ops::Deref;
 use std::str::FromStr;
+use std::sync::{Arc};
+use regex;
+use crate::config::Config;
+use crate::data;
+use crate::data::{Dimension, Measurement};
+
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-struct Address(u8, u8, u8);
+pub struct EibAddr(u8, u8, u8);
+
+impl EibAddr {
+    pub fn to_string(&self) -> String {
+        format!("{}/{}/{}", self.0, self.1, self.2).to_string()
+    }
+}
+
+fn parse_addr(s: &str) -> Result<EibAddr,String> {
+    // haupt/mittel/untergruppe
+    let re = regex::Regex::new(r"^(?P<haupt>[[:digit:]]+)/(?P<mittel>[[:digit:]]+)/(?P<unter>[[:digit:]]+)$").unwrap();
+    match re.captures(s) {
+        Some(cap) => {
+            let a = EibAddr(
+                cap["haupt"].parse::<u8>().unwrap(),
+                cap["mittel"].parse::<u8>().unwrap(),
+                cap["unter"].parse::<u8>().unwrap());
+
+            Ok(a)
+        },
+        None => {
+            let message = String::new() + "string '" + s + "' does not match format 'x/y/z'";
+            Err(message)
+        }
+    }
+}
+
 
 pub enum Command {
     Dimmer(u8), //percent
@@ -12,33 +46,72 @@ pub enum Command {
 
 pub struct Knx {
     socket: std::net::UdpSocket,
+    config: Arc<Config>,
 }
 
-
+#[derive(Debug, Copy, Clone)]
 pub struct Message {
-    raw: Vec<u8>
+    src: EibAddr,
+    dst: EibAddr,
+    sensor: Option<Measurement>,
+}
+
+impl Message {
+    pub fn from_raw(raw: &[u8]) -> Message {
+        let src = EibAddr(raw[10] >> 4, raw[10] & 0xf, raw[11]);
+        let dst = EibAddr(raw[12] >> 4, raw[12] & 0xf, raw[13]);
+
+        Message { src, dst, sensor: None }
+    }
 }
 
 
-pub fn create(multicast_group: &str, interface: &str) -> Knx {
-    let socket = std::net::UdpSocket::bind("0.0.0.0:0").expect("bind() failed");
+pub fn create(config: Arc<Config>) -> Result<Knx, String> {
+    let bind_addr = "0.0.0.0:3671"; // 3671
+    let socket = std::net::UdpSocket::bind(bind_addr)
+        .map_err(|e|e.to_string())?;
 
-    socket.join_multicast_v4(
-        &std::net::Ipv4Addr::from_str(multicast_group).unwrap(),
-        &std::net::Ipv4Addr::from_str(interface).unwrap()).expect("join_multicast_v4()");
-//        &std::net::Ipv4Addr::from_str("192.168.0.209").unwrap()).expect("join_multicast_v4()");
+    socket.join_multicast_v4(&config.knx_multicast_group,
+                             &config.knx_multicast_interface)
+        .map_err(|e|e.to_string())?;
+    
+    // to send packets:
+    // socket.connect("224.0.23.12:3671")
+    //     .map_err(|e|e.to_string())?;
 
-
-    socket.connect("224.0.23.12:3671").expect("connect() failed");
-
-    let k: Knx = Knx { socket: socket };
-
-    k
+    let knx = Knx { socket, config };
+    Ok(knx)
 }
 
 
 
 impl Knx {
+    pub async fn thread_function(&self) {
+        loop {
+            let mut buf = [0; 128];
+            println!("waiting for frame...");
+            let (number_of_bytes, addr) = self.socket.recv_from(&mut buf)
+                .expect("can not call recv_from() on udp soecket");
+            // cleate a slice
+            let filled_buf = &mut buf[..number_of_bytes];
+            println!("message from {}: {:?}", addr, &filled_buf);
+
+            let len = filled_buf.len();
+            if len < 17 {
+                println!("message with size {} is too short", len);
+                continue;
+            }
+            if len > 50 {
+                println!("message with size {} is too long", len);
+                continue;
+            }
+
+            let msg = Message::from_raw(filled_buf);
+
+            println!("message from {:?}", msg.src.to_string());
+        }
+    }
+
 
     // pub fn sendRaw(&mut self, msg: Message) {
     // 	self.socket.send(msg.raw.as_slice()).expect("send() failed");
@@ -51,9 +124,12 @@ impl Knx {
             Command::UpDownTarget(x,max) => create_knx_frame_rollo(grp, x, max)
         };
 
-        self.socket.send(msg.raw.as_slice()).expect("send() failed");
+       //  self.socket.send(msg.raw.as_slice()).expect("send() failed");
     }
 
+    pub fn handle_knx_frame(&mut self, msg: &Message) {
+
+    }
 }
 
 pub fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Message {
@@ -76,11 +152,9 @@ pub fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Message {
     if onoff { v.push( 0x81u8 ); } else { v.push( 0x80 ); }
     println!(" onoff: {:X?}", v);
 
-    let m = Message { raw: v };
-    m
+    Message { src: EibAddr(0, 0, 0), dst: EibAddr(0, 0, 0),
+    sensor: None}
 }
-
-
 
 
 pub fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Message
@@ -105,9 +179,11 @@ pub fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Message
 
     println!(" helligkeitswert: {:X?}", v);
 
-    Message { raw: v }
-}
 
+    Message { src: EibAddr(0, 0, 0), dst: EibAddr(0, 0, 0),
+        sensor: None}
+    // Message { raw: v }
+}
 
 
 
@@ -136,6 +212,8 @@ fn create_knx_frame_rollo(grp: u16, percent: u8, full: u8) -> Message
 
     println!(" rollo-wert: {:X?}", v);
 
-    Message { raw:v }
+
+    Message { src: EibAddr(0, 0, 0), dst: EibAddr(0, 0, 0),
+        sensor: None}
 }
 

@@ -1,34 +1,8 @@
 {
-	"title": "TITLE",
-	"version": "2021-04-31",
-	"http": {
-	"listen_port": 3000
-	},
-	"rooms": {
-	"og.kind": { "name": "Kinderzimmer" },
-	"eg.arbeit": { "name": "Arbeitszimmer" },
-	"eg.wohn": { "name": "Wohnzimmer" }
-	},
-	"items": {
-	"bell": { "name": "Klingel", "room": "", "knx_write_group": "0/2/1", "knx_type": "Bell" },
-	"dooropener": { "name": "Summer", "room": "", "knx_write_group": "0/2/1", "knx_type": "DoorOpener" },
-
-	"og.kind.light": { "name": "Licht", "type": "switch", "room": "og.kind", "knx_write_group": "0/2/1", "knx_type": "Switch" },
-
-	"eg.flur.spots": { "name": "Spots", "icon": "dimmer", "room": "eg.flur", "knx_write_group": "0/2/1", "knx_type": "Dimmer" },
-
-	"eg.arbeit.licht": { "name": "Licht", "type": "switch", "room": "eg.arbeit", "knx_write_group": "0/2/1", "knx_type": "Switch" },
-	"eg.arbeit.spots": { "name": "Spots", "icon": "dimmer", "room": "eg.arbeit", "knx_write_group": "0/2/1", "knx_type": "Dimmer" },
-	"eg.arbeit.rollos": { "name": "Rollos", "icon": "rollos", "room": "eg.arbeit", "knx_write_group": "0/2/1", "knx_type": "Blinds" },
-
-	"eg.wohn.tv": { "name": "TV", "type": "switch", "room": "eg.wohn", "knx_write_group": "0/2/2", "knx_type": "Switch" },
-	"eg.wohn.couch_dosen": { "name": "Couch Steckdosen", "type": "switch", "room": "eg.wohn", "knx_write_group": "0/2/2", "knx_type": "Switch" },
-	"eg.wohn.couch_lampe": { "name": "Couch Lampe", "room": "eg.wohn", "knx_write_group": "0/2/2", "knx_type": "Dimmer" },
-	"eg.wohn.spots": { "name": "Spots", "icon": "dimmer", "room": "eg.wohn", "knx_write_group": "0/2/1", "knx_type": "Dimmer" },
-
-	"eg.essen.spots": { "name": "Spots", "icon": "dimmer", "room": "eg.essen", "knx_write_group": "0/2/1", "knx_type": "Dimmer" }
-    },
-	"sensors" : {
-		"og.kind.temp": { "name":  "Temperatur", "type":  "temperature", "room":  "og.kind" }
-	}
+ "name": "John Doe",
+ "age": 43,
+ "phones": [
+     "+44 1234567",
+     "+44 2345678"
+ ]
 }
