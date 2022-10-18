@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::thread::Builder;
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub http_listen: Option<String>,
     pub http: Option<HttpConfig>,
@@ -15,30 +15,23 @@ pub struct Config {
     pub rooms: HashMap<String, Room>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct HttpConfig {
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
     name: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Actor {
     name: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Sensor {
     name: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Person {
-    name: String,
-    age: u16,
-    phones: Vec<String>,
 }
 
 impl Config {
@@ -80,7 +73,7 @@ impl ConfigBuilder {
 
         let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
 
-        let v: Person = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+        let v: Config = serde_json::from_str(&content).map_err(|e| e.to_string())?;
 
         // The type of `john` is `serde_json::Value`
         // let john = json!({
@@ -93,7 +86,7 @@ impl ConfigBuilder {
         // });
         // println!("{:?}", john);
 
-        println!("name: {:?}", v.name);
+        println!("config: {:?}", v);
         // panic!("not implemented");
         Ok(self)
     }

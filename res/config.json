@@ -1,8 +1,12 @@
 {
- "name": "John Doe",
- "age": 43,
- "phones": [
-     "+44 1234567",
-     "+44 2345678"
- ]
+  "http_listen":"0.0.0.0:8080",
+  "http":null,
+  "knx_server":null,
+  "knx_multicast_group": "224.0.23.12",
+  "knx_multicast_interface": "192.168.0.209",
+  "rooms":{},
+  "sensors": {
+    "eg.flur.brightness": {},
+    "eg.wohn.temp": {}
+  }
 }

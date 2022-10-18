@@ -6,11 +6,12 @@ extern crate handlebars;
 use handlebars::Handlebars;
 use crate::config;
 use std::sync::{Arc, Mutex};
+use crate::config::Config;
 
 #[derive(Debug)]
-pub struct Html {
+pub struct Html<'a> {
     // register
-    handlebars: Handlebars,
+    handlebars: handlebars::Handlebars<'a>, // = handlebars::Handlebars::new(), //Option<handlebars::registry::Registry>,
     data: Data
 }
 
@@ -19,7 +20,7 @@ pub struct Html {
 struct ItemData {
     id: String,
     name: String,
-    item: config::Item
+    // item: config::Item
 }
 
 
@@ -46,9 +47,10 @@ pub enum What {
 }
 
 
-impl Html {
-    pub fn render(&self, what: What, sensor_data : Arc<Mutex<crate::sensors::Wetter> >) -> String {
+impl Html<'_> {
+    pub fn render(&self, what: What) -> String {
 
+        let a = Handlebars::new();
         match what {
             What::JavaScript =>
                 self.handlebars.render("tpl_javascript", &String::from("")).expect("render()"),
@@ -61,13 +63,13 @@ impl Html {
 }
 
 
-pub fn create(config: &config::Config) -> Result<Html,String> {
+pub fn create(config: Arc<Config>) -> Result<Html<'static>,String> {
     let mut reg = Handlebars::new();
 
 
     let mut data = Data { title: "TITLE".to_string(), rooms: Vec::new() };
-    for (room_id, room) in config.file.rooms.iter() {
-	let mut r = RoomData { id: room_id.to_string(), name: room.name.clone(), items: Vec::new() };
+    for (room_id, room) in config.rooms.iter() {
+	let mut r = RoomData { id: room_id.to_string(), name: room, items: Vec::new() };
 
 	// add items in this room
 	for (item_id, item) in config.file.items.iter() {
