@@ -1,6 +1,9 @@
+use std::collections::LinkedList;
 use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 use tokio::io::AsyncReadExt;
+use tokio::task::JoinHandle;
+use crate::html::Html;
 
 mod knx;
 mod config;
@@ -19,16 +22,21 @@ async fn main() {
 
     // let mut data = Arc::new(Mutex::new(data::Data::new()));
 
-    let knx = knx::create(config.clone()).expect("KNX");
+    let html = html::create(config.clone()).expect("HTML");
 
-    let html = html::create(config.clone());
+    let a = html.render(html::What::Index).expect("render index");
 
-    let knx_thread = tokio::spawn(
-        async move { knx.thread_function().await });
+    println!("{}", a);
 
-    //knx::thread_function().expect("udp thread");
+    let mut threads = Vec::new();
+    match knx::create(config) {
+        Ok(x) => { threads.push(tokio::spawn(async move { x.thread_function().await; })) },
+        _ => ()
+    }
+    //knx::thread_function().expect("udp thread");g
     // knx.await.expect("knx await");
-    // done
+    // doneLinkedList; // <JoinHandle>::new();
 
-    knx_thread.await.expect("knx-thread stopped");
+    for handle in threads {
+        handle.await.expect("thread terminated with Error")};
 }

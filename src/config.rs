@@ -21,16 +21,19 @@ pub struct HttpConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
+    id: String,
     name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Actor {
+    id: String,
     name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sensor {
+    id: String,
     name: String,
 }
 

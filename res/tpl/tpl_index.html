@@ -1,0 +1,22 @@
+<html>
+<body>
+{{title}}
+Hallo.
+
+Rooms:
+<table>
+    <tr>
+        <th>A</th>
+    </tr>
+    {{#each rooms}}
+    <tr>
+        <td>{{this.floor}} {{this.name}}</td>
+        {{#each actions}}
+        <td>{{this.text}} --> {{this.id}}</td>
+        {{/each}}
+    </tr>
+    {{/each}}
+</table>
+
+</body>
+</html>
