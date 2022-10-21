@@ -4,9 +4,28 @@
   "knx_server":null,
   "knx_multicast_group": "224.0.23.12",
   "knx_multicast_interface": "192.168.0.209",
-  "rooms":{},
+  "rooms": {
+    "eg.floor": {
+      "name": "EG Flur"
+    },
+    "eg.livingroom": {
+      "name": "Wohnzimmer"
+    },
+    "eg.kitchen": {
+      "name": "Küche"
+    },
+    "eg.bathroom": {
+      "name": "Bad unten"
+    }
+  },
   "sensors": {
-    "eg.flur.brightness": {},
-    "eg.wohn.temp": {}
+    "eg.flur.brightness": {
+      "room": "eg.floor",
+      "name": "Helligkeit"
+    },
+    "eg.livingroom.temp": {
+      "room": "eg.livingroom",
+      "name": "Temperatur"
+    }
   }
 }

@@ -3,9 +3,7 @@ extern crate handlebars;
 // #[macro_use]
 // extern crate serde_json;
 
-use std::collections::BTreeMap;
 use handlebars::Handlebars;
-use crate::config;
 use std::sync::{Arc, Mutex};
 use serde::Serialize;
 use crate::config::Config;
@@ -60,19 +58,18 @@ impl Html<'_> {
     }
 
     fn render_index(&self) -> Result<String, ()> {
-        for (name, room) in &self.config.rooms {}
         // let mut data = BTreeMap::new();
-
         #[derive(Serialize)]
-        struct Data {
-            title: String,
-            rooms: Vec<Room>,
+        struct Sensor {
+            name: String,
+            id: String
         };
         #[derive(Serialize)]
         struct Room {
             floor: String,
             name: String,
-            actions: Vec<Action>
+            actions: Vec<Action>,
+            sensors: Vec<Sensor>,
         };
         #[derive(Serialize)]
         struct Action {
@@ -80,39 +77,37 @@ impl Html<'_> {
             id: String
         };
 
-        let data = Data {
-            title: "TITLE".to_string(),
-            rooms: vec![
-                Room {
-                    floor: "EG".to_string(), name: "Flur".to_string(),
-                    actions: vec![
-                        Action {
-                            text: "Licht aus".to_string(),
-                            id: "eg.wohn.licht.aus".to_string()
-                        },
-                        Action {
-                            text: "Licht an".to_string(),
-                            id: "eg.wohn.licht.an".to_string(),
-                        }
-                    ]},
-                Room {
-                    floor: "EG".to_string(), name: "Bad".to_string(),
-                    actions: vec![
-                        Action {
-                            text: "Licht aus".to_string(),
-                            id: "eg.bad.licht.aus".to_string()
-                        },
-                        Action {
-                            text: "Licht an".to_string(),
-                            id: "eg.bad.licht.an".to_string(),
-                        }
-                    ]},
-            ]
-        };
+        #[derive(Serialize)]
+        struct TemplateData {
+            title: String,
+            rooms: Vec<Room>,
+        }
+        let mut template_data = TemplateData {
+            title: "".to_string(),
+            rooms: vec![] };
+
+        // add rooms from config to template data
+        for (room_id, room) in &self.config.rooms {
+            println!("----- Room {}", &room.name);
+            let mut template_room = Room {
+                floor: "?".to_string(),
+                name: room.name.clone(),
+                actions: vec![],
+                sensors: vec![]
+            };
+            // look for sensors inside this room
+            for (sensor_id, sensor) in &self.config.sensors {
+                if sensor.room.eq(room_id) {
+                    let template_sensor = Sensor { name: sensor.name.clone(), id: sensor_id.clone() };
+                    template_room.sensors.push(template_sensor);
+                }
+            }
+            template_data.rooms.push(template_room);
+        }
 
         // data.insert("title".to_string(), "TITLE".to_string());
         // data.insert("rooms".to_string(), &a);
-        let str = self.handlebars.render("tpl_index", &data).expect("render()");
+        let str = self.handlebars.render("tpl_index", &template_data).expect("render()");
 
         Ok(str)
     }
@@ -122,10 +117,14 @@ impl Html<'_> {
 pub fn create(config: Arc<Config>) -> Result<Html<'static>,String> {
     let mut handlebars = Handlebars::new();
 
-    handlebars.register_template_file("tpl_index", "res/tpl/tpl_index.html");
+    handlebars
+        .register_template_file("tpl_index", "res/tpl/tpl_index.html")
+        .expect("could not read template file");
+    //
+    // let html = Html { handlebars, config };
+    // Ok(html)
 
-    let html = Html { handlebars, config };
-    Ok(html)
+    Ok( Html{handlebars, config} )
 }
   //   let mut data = Data { title: "TITLE".to_string(), rooms: Vec::new() };
   //   for (room_id, room) in config.rooms.iter() {

@@ -3,16 +3,14 @@
 {{title}}
 Hallo.
 
-Rooms:
 <table>
     <tr>
-        <th>A</th>
-    </tr>
+        <th>---</th></tr>
     {{#each rooms}}
     <tr>
-        <td>{{this.floor}} {{this.name}}</td>
-        {{#each actions}}
-        <td>{{this.text}} --> {{this.id}}</td>
+        <td>{{this.name}}</td>
+        {{#each this.sensors}}
+        <td>{{this.name}}</td>
         {{/each}}
     </tr>
     {{/each}}

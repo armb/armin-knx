@@ -1,10 +1,5 @@
-use std::collections::LinkedList;
-use std::ops::Deref;
-use std::sync::{Arc, Mutex};
-use tokio::io::AsyncReadExt;
-use tokio::task::JoinHandle;
-use crate::html::Html;
 
+use std::sync::Arc;
 mod knx;
 mod config;
 mod data;
@@ -18,15 +13,16 @@ async fn main() {
             .read("res/config.json".into()).expect("read failed")
             .build().expect("config failed"));
 
-    println!("config: {:?}", config.serialize().expect("serialize"));
+    println!("config: {:?}", *config);
 
     // let mut data = Arc::new(Mutex::new(data::Data::new()));
 
     let html = html::create(config.clone()).expect("HTML");
 
-    let a = html.render(html::What::Index).expect("render index");
+    let content = "<!DOCTYPE html>\n".to_string()
+        + html.render(html::What::Index).expect("html render error").as_str();
 
-    println!("{}", a);
+    std::fs::write("/tmp/out.html", content).expect("html render error");
 
     let mut threads = Vec::new();
     match knx::create(config) {

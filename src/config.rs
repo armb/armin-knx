@@ -1,5 +1,6 @@
 use std::collections::{HashMap, LinkedList};
 use std::error::Error;
+use std::hash::Hash;
 use std::net::Ipv4Addr;
 use serde::{Deserialize, Serialize};
 use std::thread::Builder;
@@ -13,6 +14,7 @@ pub struct Config {
     pub knx_multicast_group: Ipv4Addr,
     pub knx_multicast_interface: Ipv4Addr,
     pub rooms: HashMap<String, Room>,
+    pub sensors: HashMap<String, Sensor>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,20 +23,20 @@ pub struct HttpConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
-    id: String,
-    name: String,
+    pub name: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Actor {
-    id: String,
     name: String,
+    room: String,
+    parameter: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sensor {
-    id: String,
-    name: String,
+    pub name: String,
+    pub room: String,
 }
 
 impl Config {
@@ -50,6 +52,7 @@ pub(crate) struct ConfigBuilder {
     knx_multicast_group: Ipv4Addr,
     knx_multicast_interface: Ipv4Addr,
     rooms: HashMap<String,Room>,
+    sensors: HashMap<String, Sensor>,
 }
 
 impl ConfigBuilder {
@@ -60,6 +63,7 @@ impl ConfigBuilder {
             knx_multicast_group: Ipv4Addr::new(224,0,23,12),
             knx_multicast_interface: Ipv4Addr::new(192,168,0,209),
             rooms: HashMap::new(),
+            sensors: HashMap::new(),
         }
     }
     pub fn build(self) -> Result<Config, ()> {
@@ -70,26 +74,26 @@ impl ConfigBuilder {
             knx_multicast_group: self.knx_multicast_group,
             knx_multicast_interface: self.knx_multicast_interface,
             rooms: self.rooms,
+            sensors: self.sensors,
         })
     }
-    pub fn read(self, path: &str) -> Result<ConfigBuilder, String> {
+    pub fn read(mut self, path: &str) -> Result<ConfigBuilder, String> {
 
         let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
 
         let v: Config = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+        // change default values stored in configbuilder if they are available in config-file
+        println!("from json:\n{:?}", v);
+        for (id, room) in v.rooms {
+            println!("- name: {}", room.name);
+            self.rooms.insert(id, room);
+        }
+        for (id, sensor) in v.sensors {
+            println!("- name: {}", sensor.name);
+            self.sensors.insert(id, sensor);
+        }
 
-        // The type of `john` is `serde_json::Value`
-        // let john = json!({
-        // "name": "John Doe",
-        // "age": 43,
-        // "phones": [
-        //     "+44 1234567",
-        //     "+44 2345678"
-        // ]
-        // });
-        // println!("{:?}", john);
-
-        println!("config: {:?}", v);
+        println!("configbuilder-rooms: {:?}", self.rooms);
         // panic!("not implemented");
         Ok(self)
     }
