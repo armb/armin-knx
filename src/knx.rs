@@ -88,6 +88,7 @@ pub fn create(config: Arc<Config>) -> Result<Knx, String> {
 impl Knx {
     pub async fn thread_function(&self) {
         loop {
+            println!("knx: loop begin");
             let mut buf = [0; 128];
             println!("waiting for frame...");
             let (number_of_bytes, addr) = self.socket.recv_from(&mut buf)

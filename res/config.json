@@ -3,7 +3,7 @@
   "http":null,
   "knx_server":null,
   "knx_multicast_group": "224.0.23.12",
-  "knx_multicast_interface": "192.168.0.209",
+  "knx_multicast_interface": "127.0.0.1",
   "rooms": {
     "eg.floor": {
       "name": "EG Flur"

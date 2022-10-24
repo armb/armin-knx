@@ -82,6 +82,11 @@ impl ConfigBuilder {
         let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
 
         let v: Config = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+
+        self.knx_multicast_interface = v.knx_multicast_interface.clone();
+        self.knx_server = v.knx_server.clone();
+        self.knx_multicast_group = v.knx_multicast_group.clone();
+
         // change default values stored in configbuilder if they are available in config-file
         println!("from json:\n{:?}", v);
         for (id, room) in v.rooms {

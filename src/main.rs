@@ -1,12 +1,15 @@
-
 use std::sync::Arc;
 mod knx;
 mod config;
 mod data;
 mod html;
+mod youless;
+
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     let config =
     Arc::new(
         config::ConfigBuilder::new()
@@ -24,15 +27,31 @@ async fn main() {
 
     std::fs::write("/tmp/out.html", content).expect("html render error");
 
-    let mut threads = Vec::new();
-    match knx::create(config) {
-        Ok(x) => { threads.push(tokio::spawn(async move { x.thread_function().await; })) },
-        _ => ()
-    }
-    //knx::thread_function().expect("udp thread");g
+
+    //
+    // let mut threads = Vec::new();
+    //
+    // match knx::create(config) {
+    //     Ok(x) => { threads.push(tokio::spawn(async move { x.thread_function().await; })) },
+    //     _ => ()
+    // }
+    let knx = knx::create(config).expect("create knx");
+    let youless = youless::Youless::create();
+
+   // let future_knx =  knx.thread_function();
+    let future_youless = youless.thread_function();
+
+    // threads.push(tokio::spawn(youless.thread_function().await));
+        // async move { youless.thread_function().await }));
+
+    // tokio::join!(future_youless, future_knx);
+    tokio::join!(future_youless);
+        //knx::thread_function().expect("udp thread");g
     // knx.await.expect("knx await");
     // doneLinkedList; // <JoinHandle>::new();
+    //
+    // for handle in threads {
+    //     handle.await.expect("thread terminated with Error")};
 
-    for handle in threads {
-        handle.await.expect("thread terminated with Error")};
+    Ok(())
 }
