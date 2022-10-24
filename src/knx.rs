@@ -7,6 +7,7 @@ use crate::config::Config;
 use crate::data;
 use crate::data::{Dimension, Measurement};
 
+use tokio::net::UdpSocket;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct EibAddr(u8, u8, u8);
@@ -45,7 +46,7 @@ pub enum Command {
 
 
 pub struct Knx {
-    socket: std::net::UdpSocket,
+    socket: Option<UdpSocket>,
     config: Arc<Config>,
 }
 
@@ -67,32 +68,35 @@ impl Message {
 
 
 pub fn create(config: Arc<Config>) -> Result<Knx, String> {
-    let bind_addr = "0.0.0.0:3671"; // 3671
-    let socket = std::net::UdpSocket::bind(bind_addr)
-        .map_err(|e|e.to_string())?;
 
-    socket.join_multicast_v4(&config.knx_multicast_group,
-                             &config.knx_multicast_interface)
-        .map_err(|e|e.to_string())?;
-    
     // to send packets:
     // socket.connect("224.0.23.12:3671")
     //     .map_err(|e|e.to_string())?;
 
-    let knx = Knx { socket, config };
+    let knx = Knx { socket: None, config };
     Ok(knx)
 }
 
 
 
 impl Knx {
-    pub async fn thread_function(&self) {
+    pub async fn thread_function(&mut self) {
+        let bind_addr = "0.0.0.0:3671"; // 3671
+        let socket = UdpSocket::bind(bind_addr)
+            .await.map_err(|e|e.to_string()).expect("bind()");
+
+        socket.join_multicast_v4(self.config.knx_multicast_group,
+                                 self.config.knx_multicast_interface)
+            .map_err(|e|e.to_string()).expect("join multicast v4");
+
+        self.socket = Some(socket);
         loop {
             println!("knx: loop begin");
             let mut buf = [0; 128];
             println!("waiting for frame...");
-            let (number_of_bytes, addr) = self.socket.recv_from(&mut buf)
-                .expect("can not call recv_from() on udp soecket");
+            let socket = self.socket.as_ref().unwrap();
+            let (number_of_bytes, addr) = socket.recv_from(&mut buf)
+                .await.expect("can not call recv_from() on udp soecket");
             // cleate a slice
             let filled_buf = &mut buf[..number_of_bytes];
             println!("message from {}: {:?}", addr, &filled_buf);
