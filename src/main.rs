@@ -22,19 +22,20 @@ async fn main() -> Result<()> {
 
     let html = html::create(config.clone()).expect("HTML");
 
-    let content = "<!DOCTYPE html>\n".to_string()
-        + html.render(html::What::Index).expect("html render error").as_str();
+    // let content = "<!DOCTYPE html>\n".to_string()
+    //     + html.render(html::What::Index).expect("html render error").as_str();
+    //
+    // std::fs::write("/tmp/out.html", content).expect("html render error");
 
-    std::fs::write("/tmp/out.html", content).expect("html render error");
 
-
-    let mut knx = knx::create(config).expect("create knx");
+    //let mut knx = knx::create(config).expect("create knx");
     let youless = youless::Youless::create();
 
-    let future_knx =  knx.thread_function();
+    //let future_knx =  knx.thread_function();
     let future_youless = youless.thread_function();
 
-    tokio::join!(future_youless, future_knx);
+    future_youless.await;
+    // tokio::join!(future_youless, future_knx);
 
     Ok(())
 }
