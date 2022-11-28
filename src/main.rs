@@ -1,8 +1,9 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 mod knx;
 mod config;
 mod data;
 mod html;
+mod httpserver;
 mod youless;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -11,14 +12,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 #[tokio::main]
 async fn main() -> Result<()> {
     let config =
-    Arc::new(
-        config::ConfigBuilder::new()
-            .read("res/config.json".into()).expect("read failed")
-            .build().expect("config failed"));
+        Arc::new(
+            config::ConfigBuilder::new()
+                .read("res/config.json".into()).expect("read failed")
+                .build().expect("config failed"));
 
     println!("config: {:?}", *config);
 
-    // let mut data = Arc::new(Mutex::new(data::Data::new()));
+    let mut data = Arc::new(Mutex::new(data::Data::new()));
 
     let html = html::create(config.clone()).expect("HTML");
 
@@ -28,13 +29,17 @@ async fn main() -> Result<()> {
     // std::fs::write("/tmp/out.html", content).expect("html render error");
 
 
-    //let mut knx = knx::create(config).expect("create knx");
-    let youless = youless::Youless::create();
+    let mut knx = knx::create(config).expect("create knx");
+    let youless = youless::Youless::create(data.clone());
+    let httpserver = httpserver::HttpServer::create(data.clone());
 
-    //let future_knx =  knx.thread_function();
+    let future_knx =  knx.thread_function();
     let future_youless = youless.thread_function();
+    // let future_httpserver =  async { () }; //httpserver.thread_function();
+    let future_httpserver = httpserver.thread_function();
 
-    future_youless.await;
+    tokio::join!(future_youless, future_knx, future_httpserver);
+    // future_youless.await;
     // tokio::join!(future_youless, future_knx);
 
     Ok(())

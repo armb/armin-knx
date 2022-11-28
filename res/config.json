@@ -21,11 +21,13 @@
   "sensors": {
     "eg.flur.brightness": {
       "room": "eg.floor",
-      "name": "Helligkeit"
+      "name": "Helligkeit",
+      "eibaddr": [1,2,3]
     },
     "eg.livingroom.temp": {
       "room": "eg.livingroom",
-      "name": "Temperatur"
+      "name": "Temperatur",
+      "eibaddr": [1,4,2]
     }
   }
 }

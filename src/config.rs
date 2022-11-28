@@ -6,6 +6,16 @@ use serde::{Deserialize, Serialize};
 use std::thread::Builder;
 
 
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq)]
+pub struct EibAddr(pub u8, pub u8, pub u8);
+
+impl EibAddr {
+    pub fn to_string(&self) -> String {
+        format!("{}/{}/{}", self.0, self.1, self.2).to_string()
+    }
+}
+
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub http_listen: Option<String>,
@@ -37,6 +47,7 @@ pub struct Actor {
 pub struct Sensor {
     pub name: String,
     pub room: String,
+    pub eibaddr: Option<EibAddr>,
 }
 
 impl Config {

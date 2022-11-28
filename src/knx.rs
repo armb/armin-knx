@@ -1,22 +1,9 @@
-use std::net::{Ipv4Addr, SocketAddr};
-use std::ops::Deref;
-use std::str::FromStr;
 use std::sync::{Arc};
 use regex;
-use crate::config::Config;
-use crate::data;
-use crate::data::{Dimension, Measurement};
+use crate::config::{Config, EibAddr};
+use crate::data::{Measurement};
 
 use tokio::net::UdpSocket;
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub struct EibAddr(u8, u8, u8);
-
-impl EibAddr {
-    pub fn to_string(&self) -> String {
-        format!("{}/{}/{}", self.0, self.1, self.2).to_string()
-    }
-}
 
 fn parse_addr(s: &str) -> Result<EibAddr,String> {
     // haupt/mittel/untergruppe

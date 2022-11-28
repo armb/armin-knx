@@ -7,15 +7,17 @@ use hyper::body::{Bytes, HttpBody};
 use hyper::http::Error;
 use tokio::time::sleep;
 use std::io::Write;
+use std::sync::{Arc, Mutex};
+use crate::data::{Data, Measurement, Dimension, Unit};
 
 pub struct Youless {
+    data: Arc<Mutex<Data>>,
 }
 
 
 impl Youless {
-    pub fn create() -> Youless {
-        Youless {
-        }
+    pub fn create(data: Arc<Mutex<Data>>) -> Youless {
+        Youless { data }
     }
 
     pub async fn thread_function(&self) {
@@ -43,9 +45,16 @@ impl Youless {
             match string.lines().nth_back(1) {
                 Some(l) => {
                     let append = format!("{} {}\n", now.timestamp(), l);
-                    file.write(append.as_bytes());
+                    file.write(append.as_bytes()).expect("write");
 
-                    println!("{} {}", now.timestamp(), l);
+                    let number_string = l.split_whitespace().nth_back(0).expect("value column missing");
+                    let watts: f32 = number_string.parse::<f32>().expect("parse error");
+
+                    println!("{} watts={}", now.timestamp(), watts);
+                    {
+                        self.data.lock().unwrap().total_power =
+                            Measurement { dimension: Dimension::Power, unit: Unit::Watts, value: watts };
+                    }
                 },
                 _ => {}
             }
