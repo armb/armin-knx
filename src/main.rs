@@ -4,7 +4,6 @@ mod config;
 mod data;
 mod html;
 mod httpserver;
-mod youless;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -29,16 +28,14 @@ async fn main() -> Result<()> {
     // std::fs::write("/tmp/out.html", content).expect("html render error");
 
 
-    let mut knx = knx::create(config).expect("create knx");
-    let youless = youless::Youless::create(data.clone());
+    let mut knx = knx::create(config, data.clone()).expect("create knx");
     let httpserver = httpserver::HttpServer::create(data.clone());
 
     let future_knx =  knx.thread_function();
-    let future_youless = youless.thread_function();
     // let future_httpserver =  async { () }; //httpserver.thread_function();
     let future_httpserver = httpserver.thread_function();
 
-    tokio::join!(future_youless, future_knx, future_httpserver);
+    tokio::join!(future_knx, future_httpserver);
     // future_youless.await;
     // tokio::join!(future_youless, future_knx);
 

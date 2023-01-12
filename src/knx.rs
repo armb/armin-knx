@@ -1,10 +1,13 @@
 use std::borrow::Borrow;
-use std::sync::{Arc};
+use std::sync::{Arc, Mutex};
 use regex;
 use crate::config::{Config, EibAddr, Sensor};
-use crate::data::{Measurement};
+use crate::data::{Dimension, Measurement, Unit};
 
 use tokio::net::UdpSocket;
+use crate::data;
+use crate::data::Dimension::{Brightness, Temperature};
+use crate::data::Unit::{Celsius, Lux};
 
 
 fn parse_addr(s: &str) -> Result<EibAddr,String> {
@@ -37,6 +40,7 @@ pub enum Command {
 pub struct Knx {
     socket: Option<UdpSocket>,
     config: Arc<Config>,
+    data: Arc<Mutex<data::Data>>,
 }
 
 
@@ -54,29 +58,37 @@ impl Message {
         let dst = EibAddr(raw[12] >> 4, raw[12] & 0xf, raw[13]);
 
         let command: Option<Command> = None;
+        let mut measurement: Option<Measurement> = None;
 
         match raw.len() {
             19 => {
-                let val = raw[17] as u16 * 256 + raw[18] as u16;
-                println!("Value (raw[17]|raw[18]): {}", val);
+                let value = convert_16bit_float(raw[17], raw[18]);
+               //  println!("Value (raw[17]|raw[18]): {}", val);
+                let m = Measurement { dimension: Dimension::Brightness, unit: Unit::One, value };
+                measurement = Some(m);
+
+
+            },
+            17 => {
+                println!("len=17: on/off value?");
             },
             len => {
-                println!("Value: ??? ");
+                println!("len={}: ???", len);
             }
         }
 
-        Message { src, dst, measurement: None }
+        Message { src, dst, measurement }
     }
 }
 
 
-pub fn create(config: Arc<Config>) -> Result<Knx, String> {
+pub fn create(config: Arc<Config>, data: Arc<Mutex<data::Data>>) -> Result<Knx, String> {
 
     // to send packets:
     // socket.connect("224.0.23.12:3671")
-    //     .map_err(|e|e.to_string())?;
+    //     .map_err(|e|e.to_string())?;data: Arc<Mutex<data::Data>>)
 
-    let knx = Knx { socket: None, config };
+    let knx = Knx { socket: None, config, data };
     Ok(knx)
 }
 
@@ -116,16 +128,32 @@ impl Knx {
                 continue;
             }
 
-            convert_16bit_float(filled_buf[len-2], filled_buf[len-1]);
-
             let msg = Message::from_raw(filled_buf);
-            let src_addr_string = msg.src.to_string();
-            match self.get_sensor_from(&msg.src) {
-                Some(sensor) =>
-                    println!("knx-message from {:?}: measurement={:?}", sensor, msg.measurement),
-                None =>
-                    println!("knx-message from {:?}: measurement={:?}", src_addr_string, msg.measurement)
+            let sensor =  self.get_sensor_from(&msg.src);
+            let source_string = match sensor {
+                Some(sensor) => format!("{:?}", sensor),
+                None => msg.src.to_string()
             };
+
+            if sensor.is_some() {
+                let mut data = self.data.lock().unwrap();
+                let sensor = sensor.unwrap();
+                match sensor.eibaddr.as_str() {
+                    "1/2/4" => {
+                        data.till = msg.measurement.expect("no valid measurement data");
+                        data.till.unit = Celsius;
+                        data.till.dimension = Temperature;
+                    },
+                    "1/2/2" => {
+                        data.flur_brightness = msg.measurement.expect("no valid measurement data");
+                        data.flur_brightness.dimension = Brightness;
+                        data.flur_brightness.unit = Lux;
+                    },
+                    _ => {},
+                }
+            }
+
+            println!("knx-message from {}: measurement={:?}", source_string, msg.measurement);
         }
     }
 
@@ -154,9 +182,6 @@ impl Knx {
         None
     }
 
-    pub fn handle_knx_frame(&mut self, msg: &Message) {
-
-    }
 }
 
 pub fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Message {
@@ -246,11 +271,12 @@ fn create_knx_frame_rollo(grp: u16, percent: u8, full: u8) -> Message
 // slice: &[u8], array: &[u8; 2]
 pub fn convert_16bit_float(high:u8, low:u8) -> f32 {
     // MEEEMMMM MMMMMMMM
-    let m = ((high & 0x07) as u16 * 256) + low as u16;
+    let mantissa = ((high & 0x07) as u16 * 256) + low as u16;
     let negative = high & 0x80 == 0x80;
-    let exp = (high & 0x70) / 16;
+    let exponent = match (high & 0x70) { 0 => 1, other => other as i32 };
+    println!("{} {mantissa} .powi ( {exponent} )", (if negative { "-" } else { "" } ));
 
-    let mut out = (m as f32).powi(exp as i32);
+    let mut out = (mantissa as f32).powi(exponent);
     if negative { out *= -1f32 };
     println!("--> {:02X}:{:02X} = {}", high, low, out);
     out * 0.01 // resolution: 0.01

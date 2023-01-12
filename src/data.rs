@@ -25,6 +25,12 @@ pub struct Measurement {
     pub(crate) value: f32,
 }
 
+// impl Measurement {
+//     pub fn empty() -> Measurement {
+//         Measurement { dimension: Dimension::None, unit: Unit::One, value: 0f32 }
+//     }
+// }
+
 #[derive(Debug)]
 pub struct Data {
     pub till: Measurement,
@@ -37,8 +43,8 @@ impl Data {
     pub fn new() -> Self {
         Self {
             measurements: HashMap::new(),
-            till: Measurement { dimension: Temperature, unit: Unit::One, value: 0.2f32},
-            flur_brightness: Measurement { dimension: Brightness, unit: Unit::Lux, value: 0.2f32},
+            till: Measurement { dimension: Temperature, unit: Unit::Celsius, value: 0f32},
+            flur_brightness: Measurement { dimension: Brightness, unit: Unit::Lux, value: 0f32},
             total_power: Measurement { dimension: Power, unit: Watts, value: 0f32}
         }
     }
