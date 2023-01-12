@@ -37,7 +37,7 @@ impl HttpServer {
         // And a MakeService to handle each connection...
         async fn create_response(req: Request<Body>, data: Arc<Mutex<Data>>) -> Result<Response<Body>, Infallible> {
             let d = data.lock().expect("");
-            let flur = format!("{} {:?}", d.flur_brightness.value, d.flur_brightness.unit);
+            let flur = format!("{:?}", d.flur_brightness);
             let till = format!("{} {:?}", d.till.value, d.till.unit);
 
             let msg = format!("{flur}, {till}");
