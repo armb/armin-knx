@@ -4,15 +4,9 @@ use hyper::server::Server;
 use std::sync::{Arc, Mutex};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::convert::Infallible;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use hyper::{Body, http, Method, Request, Response, StatusCode};
-use hyper::body::HttpBody;
+use hyper::{Body, Method, Request, Response, StatusCode};
 use hyper::http::Error;
-use hyper::server::conn::{AddrIncoming, AddrStream};
-use hyper::service::{make_service_fn, Service, service_fn};
-use tokio::sync;
-use tokio::task::futures;
+use hyper::service::{make_service_fn, service_fn};
 use crate::data;
 
 pub struct HttpServer {
@@ -24,6 +18,7 @@ pub struct HttpServer {
 // https://hyper.rs/guides/server/echo/
 
 
+
 impl HttpServer {
     // async fn handle(
     //     &self,
@@ -31,6 +26,14 @@ impl HttpServer {
     //     req: Request<Body>) -> Result<Response<Body>, Infallible> {
     //         Ok(Response::new(Body::from("Hello World")))
     // }
+
+    async fn html_body(&self, path: &String) -> Body {
+        let mut content = String::default();
+
+        let value = self.data.lock().expect("lock()").total_power.value;
+        content += &*format!("Value: {}", value);
+        Body::from(content)
+    }
 
     // Implementing a Service when used with make_service_fn
     async fn hello_world(req: Request<Body>) -> Result<Response<Body>, Infallible> {
@@ -61,15 +64,25 @@ impl HttpServer {
 
     pub async fn thread_function(&self) -> () {
         // And a MakeService to handle each connection...
-        let make_service = make_service_fn(|_conn| async {
-            Ok::<_, Infallible>(service_fn(Self::hello_world ))
+        // let make_service = make_service_fn(|_conn| async {
+        //     Ok::<_, Infallible>(service_fn(Self::hello_world ))
+        // });
+
+
+        // And a MakeService to handle each connection...
+        let make_service = make_service_fn(|_| async {
+            Ok::<_, Error>(service_fn(|_req| async {
+                Ok::<_, Error>(Response::new(Body::from("Hello World")))
+            }))
         });
 
         // Then bind and serve...
-        let server = Server::bind(&self.addr).serve(make_service);
+        let builder = Server::bind(&self.addr)
+            .serve(make_service);
+
 
         // And run forever...
-        if let Err(e) = server.await {
+        if let Err(e) = builder.await {
             eprintln!("server error: {}", e);
         }
     }

@@ -22,12 +22,12 @@
     "eg.flur.brightness": {
       "room": "eg.floor",
       "name": "Helligkeit",
-      "eibaddr": [1,2,3]
+      "eibaddr": "1/2/2"
     },
     "eg.livingroom.temp": {
       "room": "eg.livingroom",
       "name": "Temperatur",
-      "eibaddr": [1,4,2]
+      "eibaddr": "1/2/4"
     }
   }
 }

@@ -48,7 +48,7 @@ impl Youless {
                     file.write(append.as_bytes()).expect("write");
 
                     let number_string = l.split_whitespace().nth_back(0).expect("value column missing");
-                    let watts: f32 = number_string.parse::<f32>().expect("parse error");
+                    let watts: f32 = 0.0; //umber_string.parse::<f32>().expect("parse error");
 
                     println!("{} watts={}", now.timestamp(), watts);
                     {

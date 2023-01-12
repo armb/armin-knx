@@ -4,7 +4,7 @@ extern crate handlebars;
 // extern crate serde_json;
 
 use handlebars::Handlebars;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use serde::Serialize;
 use crate::config::Config;
 
@@ -63,19 +63,19 @@ impl Html<'_> {
         struct Sensor {
             name: String,
             id: String
-        };
+        }
         #[derive(Serialize)]
         struct Room {
             floor: String,
             name: String,
             actions: Vec<Action>,
             sensors: Vec<Sensor>,
-        };
+        }
         #[derive(Serialize)]
         struct Action {
             text: String,
             id: String
-        };
+        }
 
         #[derive(Serialize)]
         struct TemplateData {

@@ -1,12 +1,10 @@
-use std::collections::{HashMap, LinkedList};
-use std::error::Error;
+use std::collections::{HashMap};
 use std::hash::Hash;
 use std::net::Ipv4Addr;
 use serde::{Deserialize, Serialize};
-use std::thread::Builder;
 
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Hash, Eq)]
 pub struct EibAddr(pub u8, pub u8, pub u8);
 
 impl EibAddr {
@@ -47,7 +45,7 @@ pub struct Actor {
 pub struct Sensor {
     pub name: String,
     pub room: String,
-    pub eibaddr: Option<EibAddr>,
+    pub eibaddr: String,
 }
 
 impl Config {
