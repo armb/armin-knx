@@ -64,7 +64,7 @@ impl Message {
             19 => {
                 let value = convert_16bit_float(raw[17], raw[18]);
                //  println!("Value (raw[17]|raw[18]): {}", val);
-                let m = Measurement { dimension: Dimension::Brightness, unit: Unit::One, value };
+                let m = Measurement { dimension: Dimension::Brightness, unit: Unit::One, value: Some(value) };
                 measurement = Some(m);
 
 
@@ -129,31 +129,20 @@ impl Knx {
             }
 
             let msg = Message::from_raw(filled_buf);
-            let sensor =  self.get_sensor_from(&msg.src);
-            let source_string = match sensor {
-                Some(sensor) => format!("{:?}", sensor),
-                None => msg.src.to_string()
-            };
-
-            if sensor.is_some() {
+            let a = self.get_sensor_from(&msg.src);
+            if a.is_some() {
+                let (id, sensor) = a.unwrap();
+                println!("message from sensor {id}");
                 let mut data = self.data.lock().unwrap();
-                let sensor = sensor.unwrap();
-                match sensor.eibaddr.as_str() {
-                    "1/2/4" => {
-                        data.till = msg.measurement.expect("no valid measurement data");
-                        data.till.unit = Celsius;
-                        data.till.dimension = Temperature;
-                    },
-                    "1/2/2" => {
-                        data.flur_brightness = msg.measurement.expect("no valid measurement data");
-                        data.flur_brightness.dimension = Brightness;
-                        data.flur_brightness.unit = Lux;
-                    },
-                    _ => {},
+                match data.get_mut(id) {
+                    Some(mut m) => m.value = msg.measurement.expect("no measurement in frame").value,
+                    None => eprintln!("sensor not known in data struct?")
                 }
+            } else {
+                eprintln!("No sensor known with eib addr {:?}", &msg.src);
             }
 
-            println!("knx-message from {}: measurement={:?}", source_string, msg.measurement);
+            println!("knx-message from {:?}: measurement={:?}", msg.src, msg.measurement);
         }
     }
 
@@ -172,11 +161,11 @@ impl Knx {
        //  self.socket.send(msg.raw.as_slice()).expect("send() failed");
     }
 
-    pub fn get_sensor_from(&self, addr: &EibAddr) -> Option<&Sensor> {
+    pub fn get_sensor_from(&self, addr: &EibAddr) -> Option<(&String, &Sensor)> {
         let addr_string = format!("{}/{}/{}", addr.0, addr.1, addr.2);
-        for sensor in self.config.sensors.values() {
+        for (id, sensor) in &self.config.sensors {
             if sensor.eibaddr == addr_string {
-                return Some(sensor);
+                return Some( (id, sensor) );
             }
         }
         None

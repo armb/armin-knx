@@ -2,7 +2,6 @@ use std::sync::{Arc, Mutex};
 mod knx;
 mod config;
 mod data;
-mod html;
 mod httpserver;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -19,8 +18,15 @@ async fn main() -> Result<()> {
     println!("config: {:?}", *config);
 
     let mut data = Arc::new(Mutex::new(data::Data::new()));
-
-    let html = html::create(config.clone()).expect("HTML");
+    {
+        let mut data = data.lock().unwrap();
+        for (id, sensor) in &config.sensors {
+            match data.add_sensor(&id, &sensor) {
+                Ok(_) => println!("added sensor {id}"),
+                Err(m) => eprintln!("ERROR: {m}")
+            }
+        }
+    }
 
     // let content = "<!DOCTYPE html>\n".to_string()
     //     + html.render(html::What::Index).expect("html render error").as_str();
@@ -29,7 +35,7 @@ async fn main() -> Result<()> {
 
 
     let mut knx = knx::create(config, data.clone()).expect("create knx");
-    let httpserver = httpserver::HttpServer::create(data.clone());
+    let httpserver = unsafe { httpserver::HttpServer::create(data.clone()) };
 
     let future_knx =  knx.thread_function();
     // let future_httpserver =  async { () }; //httpserver.thread_function();

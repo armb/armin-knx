@@ -8,8 +8,8 @@
     "eg.floor": {
       "name": "EG Flur"
     },
-    "eg.livingroom": {
-      "name": "Wohnzimmer"
+    "od.bedroom": {
+      "name": "Schlafzimmer"
     },
     "eg.kitchen": {
       "name": "Küche"
@@ -20,13 +20,15 @@
   },
   "sensors": {
     "eg.flur.brightness": {
+      "dimension": "brightness",
       "room": "eg.floor",
-      "name": "Helligkeit",
+      "name": "eg.floor:helligkeit",
       "eibaddr": "1/2/2"
     },
-    "eg.livingroom.temp": {
-      "room": "eg.livingroom",
-      "name": "Temperatur",
+    "og.bedroom.temp": {
+      "dimension": "temperature",
+      "room": "og.bedroom",
+      "name": "Schlafzimmer",
       "eibaddr": "1/2/4"
     }
   }

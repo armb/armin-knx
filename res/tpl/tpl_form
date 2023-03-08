@@ -1,0 +1,6 @@
+   <form action=\"foo\" method=\"GET\">
+                <input type=\"hidden\" name=\"a\" value=\"1\" />
+                <input type=\"hidden\" name=\"b\" value=\"2\" />
+                <input type=\"hidden\" name=\"c\" value=\"3\" />
+                <input type=\"submit\" />
+                </form>

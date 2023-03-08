@@ -2,6 +2,7 @@ use std::collections::{HashMap};
 use std::hash::Hash;
 use std::net::Ipv4Addr;
 use serde::{Deserialize, Serialize};
+use crate::data::Dimension;
 
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Hash, Eq)]
@@ -43,9 +44,21 @@ pub struct Actor {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sensor {
+    pub dimension: String,
     pub name: String,
     pub room: String,
     pub eibaddr: String,
+}
+
+impl Sensor {
+    pub fn get_dimension(&self) -> Dimension {
+        match self.dimension.as_str() {
+            "brightness" => Dimension::Brightness,
+            "temperature" => Dimension::Temperature,
+            "onoff" => Dimension::OnOff,
+            _ => Dimension::None
+        }
+    }
 }
 
 impl Config {
@@ -99,11 +112,11 @@ impl ConfigBuilder {
         // change default values stored in configbuilder if they are available in config-file
         println!("from json:\n{:?}", v);
         for (id, room) in v.rooms {
-            println!("- name: {}", room.name);
+            println!("- id: {id}, name={}", room.name);
             self.rooms.insert(id, room);
         }
         for (id, sensor) in v.sensors {
-            println!("- name: {}", sensor.name);
+            println!("- id: {}", sensor.name);
             self.sensors.insert(id, sensor);
         }
 
