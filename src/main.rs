@@ -1,15 +1,30 @@
+use std::env;
 use std::sync::{Arc, Mutex};
+use tauri::{Builder, generate_handler, command};
+
 mod knx;
 mod config;
 mod data;
-mod html;
-mod httpserver;
+
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 
+// on windows disable command prompt window for bundled apps
+#[cfg_attr(
+all(not(debug_assertions), target_os = "windows"),
+windows_subsystem = "windows"
+)]
 #[tokio::main]
+
 async fn main() -> Result<()> {
+    //
+    // env::set_var("OUT_DIR", "TEMP");
+    // assert_eq!(env::var("OUT_DIR"), Ok("TEMP".to_string()));
+    //
+    // include!(concat!(env!("OUT_DIR"), "/data.rs"));
+
+
     let config =
         Arc::new(
             config::ConfigBuilder::new()
@@ -20,24 +35,17 @@ async fn main() -> Result<()> {
 
     let mut data = Arc::new(Mutex::new(data::Data::new()));
 
-    let html = html::create(config.clone()).expect("HTML");
+    let mut knx =
+        knx::create(config, data.clone()).expect("create knx");
 
-    // let content = "<!DOCTYPE html>\n".to_string()
-    //     + html.render(html::What::Index).expect("html render error").as_str();
+    let mut ui =
+        tauri::Builder::default()
+            .run(tauri::generate_context!());
+            // .expect("error while running tauri application");
     //
-    // std::fs::write("/tmp/out.html", content).expect("html render error");
-
-
-    let mut knx = knx::create(config, data.clone()).expect("create knx");
-    let httpserver = httpserver::HttpServer::create(data.clone());
-
-    let future_knx =  knx.thread_function();
-    // let future_httpserver =  async { () }; //httpserver.thread_function();
-    let future_httpserver = httpserver.thread_function();
-
-    tokio::join!(future_knx, future_httpserver);
-    // future_youless.await;
-    // tokio::join!(future_youless, future_knx);
+    tokio::join!(
+         knx.thread_function(),
+         ui);
 
     Ok(())
 }
