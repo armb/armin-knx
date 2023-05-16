@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::error::Error;
 use std::sync::{Arc, Mutex};
 use regex;
 use crate::config::{Config, EibAddr, Sensor};
@@ -38,7 +39,6 @@ pub enum Command {
 
 
 pub struct Knx {
-    socket: Option<UdpSocket>,
     config: Arc<Config>,
     data: Arc<Mutex<data::Data>>,
 }
@@ -64,7 +64,7 @@ impl Message {
             19 => {
                 let value = convert_16bit_float(raw[17], raw[18]);
                //  println!("Value (raw[17]|raw[18]): {}", val);
-                let m = Measurement { dimension: Dimension::Brightness, unit: Unit::One, value };
+                let m = Measurement { dimension: Dimension::Brightness, unit: Unit::One, value: Some(value) };
                 measurement = Some(m);
 
 
@@ -83,32 +83,29 @@ impl Message {
 
 
 pub fn create(config: Arc<Config>, data: Arc<Mutex<data::Data>>) -> Result<Knx, String> {
-
-    // to send packets:
-    // socket.connect("224.0.23.12:3671")
-    //     .map_err(|e|e.to_string())?;data: Arc<Mutex<data::Data>>)
-
-    let knx = Knx { socket: None, config, data };
+    let knx = Knx { config, data };
     Ok(knx)
 }
 
 
 impl Knx {
-    pub async fn thread_function(&mut self) {
-        let bind_addr = "0.0.0.0:3671"; // 3671
+    pub async fn thread_function(&mut self) -> Result<(), std::io::Error> {
+        let bind_addr = (
+            self.config.knx_multicast_interface,
+            self.config.knx_multicast_port);
         let socket = UdpSocket::bind(bind_addr)
-            .await.map_err(|e|e.to_string()).expect("bind()");
-
-        socket.join_multicast_v4(self.config.knx_multicast_group,
+            .await?;
+            // await.map_err(|e|e.to_string()).expect("bind()");
+            socket
+                .join_multicast_v4(self.config.knx_multicast_group,
                                  self.config.knx_multicast_interface)
-            .map_err(|e|e.to_string()).expect("join multicast v4");
-
-        self.socket = Some(socket);
+                .expect("Could not join multicast group");
+       // self.socket = Some(socket);
         loop {
             println!("knx: loop begin");
             let mut buf = [0; 128];
             println!("waiting for frame...");
-            let socket = self.socket.as_ref().unwrap();
+         //   let socket = self.socket.as_ref().unwrap();
             let (number_of_bytes, addr) = socket.recv_from(&mut buf)
                 .await.expect("can not call recv_from() on udp soecket");
             // cleate a slice
@@ -129,31 +126,20 @@ impl Knx {
             }
 
             let msg = Message::from_raw(filled_buf);
-            let sensor =  self.get_sensor_from(&msg.src);
-            let source_string = match sensor {
-                Some(sensor) => format!("{:?}", sensor),
-                None => msg.src.to_string()
-            };
-
-            if sensor.is_some() {
+            let a = self.get_sensor_from(&msg.src);
+            if a.is_some() {
+                let (id, sensor) = a.unwrap();
+                println!("message from sensor {id}");
                 let mut data = self.data.lock().unwrap();
-                let sensor = sensor.unwrap();
-                match sensor.eibaddr.as_str() {
-                    "1/2/4" => {
-                        data.till = msg.measurement.expect("no valid measurement data");
-                        data.till.unit = Celsius;
-                        data.till.dimension = Temperature;
-                    },
-                    "1/2/2" => {
-                        data.flur_brightness = msg.measurement.expect("no valid measurement data");
-                        data.flur_brightness.dimension = Brightness;
-                        data.flur_brightness.unit = Lux;
-                    },
-                    _ => {},
+                match data.get_mut(id) {
+                    Some(mut m) => m.value = msg.measurement.expect("no measurement in frame").value,
+                    None => eprintln!("sensor not known in data struct?")
                 }
+            } else {
+                eprintln!("No sensor known with eib addr {:?}", &msg.src);
             }
 
-            println!("knx-message from {}: measurement={:?}", source_string, msg.measurement);
+            println!("knx-message from {:?}: measurement={:?}", msg.src, msg.measurement);
         }
     }
 
@@ -172,11 +158,11 @@ impl Knx {
        //  self.socket.send(msg.raw.as_slice()).expect("send() failed");
     }
 
-    pub fn get_sensor_from(&self, addr: &EibAddr) -> Option<&Sensor> {
+    pub fn get_sensor_from(&self, addr: &EibAddr) -> Option<(&String, &Sensor)> {
         let addr_string = format!("{}/{}/{}", addr.0, addr.1, addr.2);
-        for sensor in self.config.sensors.values() {
+        for (id, sensor) in &self.config.sensors {
             if sensor.eibaddr == addr_string {
-                return Some(sensor);
+                return Some( (id, sensor) );
             }
         }
         None

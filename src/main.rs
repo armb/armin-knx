@@ -1,51 +1,59 @@
-use std::env;
 use std::sync::{Arc, Mutex};
-use tauri::{Builder, generate_handler, command};
+use crate::config::Config;
 
 mod knx;
 mod config;
 mod data;
-
+mod httpserver;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 
-// on windows disable command prompt window for bundled apps
-#[cfg_attr(
-all(not(debug_assertions), target_os = "windows"),
-windows_subsystem = "windows"
-)]
 #[tokio::main]
-
 async fn main() -> Result<()> {
-    //
-    // env::set_var("OUT_DIR", "TEMP");
-    // assert_eq!(env::var("OUT_DIR"), Ok("TEMP".to_string()));
-    //
-    // include!(concat!(env!("OUT_DIR"), "/data.rs"));
-
-
+    let path = "res/config.json".to_string();
     let config =
         Arc::new(
-            config::ConfigBuilder::new()
-                .read("res/config.json".into()).expect("read failed")
-                .build().expect("config failed"));
+            Config::read(&path)
+                .expect("Could not read config file")
+        );
 
-    println!("config: {:?}", *config);
+    config.print();
 
     let mut data = Arc::new(Mutex::new(data::Data::new()));
+    {
+        let mut data = data.lock().unwrap();
+        for (id, sensor) in &config.sensors {
+            match data.add_sensor(&id, &sensor) {
+                Ok(_) => println!("added sensor {id}"),
+                Err(m) => eprintln!("ERROR: {m}")
+            }
+        }
+    }
 
-    let mut knx =
-        knx::create(config, data.clone()).expect("create knx");
-
-    let mut ui =
-        tauri::Builder::default()
-            .run(tauri::generate_context!());
-            // .expect("error while running tauri application");
+    // let content = "<!DOCTYPE html>\n".to_string()
+    //     + html.render(html::What::Index).expect("html render error").as_str();
     //
-    tokio::join!(
-         knx.thread_function(),
-         ui);
+    // std::fs::write("/tmp/out.html", content).expect("html render error");
+
+    let mut knx = knx::create(
+        config.clone(), data.clone()).expect("create knx");
+
+    let mut h = handlebars::Handlebars::new();
+    h.register_template_file("index", "res/tpl/tpl_index.html").expect("ERROR");
+
+    let httpserver = httpserver::HttpServer::create(
+        config.clone(), data.clone());
+
+    let future_knx =  knx.thread_function();
+    // let future_httpserver =  async { () }; //httpserver.thread_function();
+    let future_httpserver = httpserver.thread_function();
+
+    //tokio::join!(future_knx, future_httpserver);
+
+    future_httpserver.await;
+    // future_youless.await;
+    // tokio::join!(future_youless, future_knx);
 
     Ok(())
 }

@@ -1,15 +1,15 @@
 {
-  "http_listen":"0.0.0.0:8080",
-  "http":null,
+  "http_listen_address": "127.0.0.1:8080",
   "knx_server":null,
   "knx_multicast_group": "224.0.23.12",
-  "knx_multicast_interface": "192.168.0.209",
+  "knx_multicast_interface": "192.168.2.2",
+  "knx_multicast_port": 3086,
   "rooms": {
     "eg.floor": {
       "name": "EG Flur"
     },
-    "eg.livingroom": {
-      "name": "Wohnzimmer"
+    "od.bedroom": {
+      "name": "Schlafzimmer"
     },
     "eg.kitchen": {
       "name": "Küche"
@@ -20,13 +20,15 @@
   },
   "sensors": {
     "eg.flur.brightness": {
+      "dimension": "brightness",
       "room": "eg.floor",
-      "name": "Helligkeit",
+      "name": "eg.floor:helligkeit",
       "eibaddr": "1/2/2"
     },
-    "eg.livingroom.temp": {
-      "room": "eg.livingroom",
-      "name": "Temperatur",
+    "og.bedroom.temp": {
+      "dimension": "temperature",
+      "room": "og.bedroom",
+      "name": "Schlafzimmer",
       "eibaddr": "1/2/4"
     }
   }

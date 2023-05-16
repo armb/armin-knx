@@ -1,7 +1,9 @@
 use std::collections::{HashMap};
+use std::error::Error;
 use std::hash::Hash;
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, SocketAddrV4};
 use serde::{Deserialize, Serialize};
+use crate::data::Dimension;
 
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, PartialEq, Hash, Eq)]
@@ -13,21 +15,6 @@ impl EibAddr {
     }
 }
 
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Config {
-    pub http_listen: Option<String>,
-    pub http: Option<HttpConfig>,
-    pub knx_server: Option<String>,
-    pub knx_multicast_group: Ipv4Addr,
-    pub knx_multicast_interface: Ipv4Addr,
-    pub rooms: HashMap<String, Room>,
-    pub sensors: HashMap<String, Sensor>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct HttpConfig {
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Room {
@@ -43,73 +30,76 @@ pub struct Actor {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Sensor {
+    pub dimension: String,
     pub name: String,
     pub room: String,
     pub eibaddr: String,
 }
 
+impl Sensor {
+    pub fn get_dimension(&self) -> Dimension {
+        match self.dimension.as_str() {
+            "brightness" => Dimension::Brightness,
+            "temperature" => Dimension::Temperature,
+            "onoff" => Dimension::OnOff,
+            _ => Dimension::None
+        }
+    }
+}
+
+
+
+
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Config {
+    pub http_listen_address: String,
+    pub knx_server: Option<String>,
+    pub knx_multicast_group: Ipv4Addr,
+    pub knx_multicast_interface: Ipv4Addr,
+    pub knx_multicast_port: u16,
+    pub rooms: HashMap<String, Room>,
+    pub sensors: HashMap<String, Sensor>,
+}
+
+
 impl Config {
     pub fn serialize(&self) -> Result<String, ()> {
         serde_json::to_string(self).map_err(|x| { () })
     }
-}
 
-// #[derive(Default)]
-pub(crate) struct ConfigBuilder {
-    http_listen: Option<String>,
-    knx_server: Option<String>,
-    knx_multicast_group: Ipv4Addr,
-    knx_multicast_interface: Ipv4Addr,
-    rooms: HashMap<String,Room>,
-    sensors: HashMap<String, Sensor>,
-}
-
-impl ConfigBuilder {
-    pub fn new() -> ConfigBuilder {
-        ConfigBuilder {
-            http_listen: None,
+    pub fn default() -> Config {
+       // let http_addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, 8080);
+        Config {
+            http_listen_address: String::from("127.0.0.1:8080"),
             knx_server: None,
-            knx_multicast_group: Ipv4Addr::new(224,0,23,12),
-            knx_multicast_interface: Ipv4Addr::new(192,168,0,209),
+            knx_multicast_group: Ipv4Addr::UNSPECIFIED,
+            knx_multicast_interface: Ipv4Addr::UNSPECIFIED,
+            knx_multicast_port: 3086,
             rooms: HashMap::new(),
             sensors: HashMap::new(),
         }
     }
-    pub fn build(self) -> Result<Config, ()> {
-        Ok(Config {
-            http: None,
-            http_listen: Some("0.0.0.0:8080".to_string()),
-            knx_server: self.knx_server,
-            knx_multicast_group: self.knx_multicast_group,
-            knx_multicast_interface: self.knx_multicast_interface,
-            rooms: self.rooms,
-            sensors: self.sensors,
-        })
+
+    pub fn read(path: &String) -> Result<Config, String> {
+        let content = std::fs::read_to_string(path)
+            .expect("Could not read file.");
+
+        let mut config: Config = serde_json::from_str(&content)
+            .expect(":-(");
+
+        Ok(config)
     }
-    pub fn read(mut self, path: &str) -> Result<ConfigBuilder, String> {
 
-        let content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-
-        let v: Config = serde_json::from_str(&content).map_err(|e| e.to_string())?;
-
-        self.knx_multicast_interface = v.knx_multicast_interface.clone();
-        self.knx_server = v.knx_server.clone();
-        self.knx_multicast_group = v.knx_multicast_group.clone();
-
+    pub fn print(&self) {
         // change default values stored in configbuilder if they are available in config-file
-        println!("from json:\n{:?}", v);
-        for (id, room) in v.rooms {
-            println!("- name: {}", room.name);
-            self.rooms.insert(id, room);
+        println!("from json:\n{:?}", self);
+        for (id, room) in &self.rooms {
+            println!("room '{id}': {room:?}");
         }
-        for (id, sensor) in v.sensors {
-            println!("- name: {}", sensor.name);
-            self.sensors.insert(id, sensor);
+        for (id, sensor) in &self.sensors {
+            println!("sensor '{id}': {sensor:?}");
         }
-
-        println!("configbuilder-rooms: {:?}", self.rooms);
-        // panic!("not implemented");
-        Ok(self)
     }
 }
 
