@@ -1,4 +1,6 @@
 use std::sync::{Arc, Mutex};
+use crate::config::Config;
+
 mod knx;
 mod config;
 mod data;
@@ -9,13 +11,14 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let path = "res/config.json".to_string();
     let config =
         Arc::new(
-            config::ConfigBuilder::new()
-                .read("res/config.json".into()).expect("read failed")
-                .build().expect("config failed"));
+            Config::read(&path)
+                .expect("Could not read config file")
+        );
 
-    println!("config: {:?}", *config);
+    config.print();
 
     let mut data = Arc::new(Mutex::new(data::Data::new()));
     {
@@ -33,15 +36,22 @@ async fn main() -> Result<()> {
     //
     // std::fs::write("/tmp/out.html", content).expect("html render error");
 
+    let mut knx = knx::create(
+        config.clone(), data.clone()).expect("create knx");
 
-    let mut knx = knx::create(config, data.clone()).expect("create knx");
-    let httpserver = unsafe { httpserver::HttpServer::create(data.clone()) };
+    let mut h = handlebars::Handlebars::new();
+    h.register_template_file("index", "res/tpl/tpl_index.html").expect("ERROR");
+
+    let httpserver = httpserver::HttpServer::create(
+        config.clone(), data.clone());
 
     let future_knx =  knx.thread_function();
     // let future_httpserver =  async { () }; //httpserver.thread_function();
     let future_httpserver = httpserver.thread_function();
 
-    tokio::join!(future_knx, future_httpserver);
+    //tokio::join!(future_knx, future_httpserver);
+
+    future_httpserver.await;
     // future_youless.await;
     // tokio::join!(future_youless, future_knx);
 

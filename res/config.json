@@ -1,9 +1,9 @@
 {
-  "http_listen":"0.0.0.0:8080",
-  "http":null,
+  "http_listen_address": "127.0.0.1:8080",
   "knx_server":null,
   "knx_multicast_group": "224.0.23.12",
-  "knx_multicast_interface": "192.168.0.209",
+  "knx_multicast_interface": "192.168.2.2",
+  "knx_multicast_port": 3086,
   "rooms": {
     "eg.floor": {
       "name": "EG Flur"

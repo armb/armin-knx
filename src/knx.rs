@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::error::Error;
 use std::sync::{Arc, Mutex};
 use regex;
 use crate::config::{Config, EibAddr, Sensor};
@@ -38,7 +39,6 @@ pub enum Command {
 
 
 pub struct Knx {
-    socket: Option<UdpSocket>,
     config: Arc<Config>,
     data: Arc<Mutex<data::Data>>,
 }
@@ -83,32 +83,29 @@ impl Message {
 
 
 pub fn create(config: Arc<Config>, data: Arc<Mutex<data::Data>>) -> Result<Knx, String> {
-
-    // to send packets:
-    // socket.connect("224.0.23.12:3671")
-    //     .map_err(|e|e.to_string())?;data: Arc<Mutex<data::Data>>)
-
-    let knx = Knx { socket: None, config, data };
+    let knx = Knx { config, data };
     Ok(knx)
 }
 
 
 impl Knx {
-    pub async fn thread_function(&mut self) {
-        let bind_addr = "0.0.0.0:3671"; // 3671
+    pub async fn thread_function(&mut self) -> Result<(), std::io::Error> {
+        let bind_addr = (
+            self.config.knx_multicast_interface,
+            self.config.knx_multicast_port);
         let socket = UdpSocket::bind(bind_addr)
-            .await.map_err(|e|e.to_string()).expect("bind()");
-
-        socket.join_multicast_v4(self.config.knx_multicast_group,
+            .await?;
+            // await.map_err(|e|e.to_string()).expect("bind()");
+            socket
+                .join_multicast_v4(self.config.knx_multicast_group,
                                  self.config.knx_multicast_interface)
-            .map_err(|e|e.to_string()).expect("join multicast v4");
-
-        self.socket = Some(socket);
+                .expect("Could not join multicast group");
+       // self.socket = Some(socket);
         loop {
             println!("knx: loop begin");
             let mut buf = [0; 128];
             println!("waiting for frame...");
-            let socket = self.socket.as_ref().unwrap();
+         //   let socket = self.socket.as_ref().unwrap();
             let (number_of_bytes, addr) = socket.recv_from(&mut buf)
                 .await.expect("can not call recv_from() on udp soecket");
             // cleate a slice

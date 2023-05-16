@@ -1,124 +1,152 @@
-use std::collections::{BTreeMap, HashMap};
-use hyper::server::Server;
+use std::borrow::Borrow;
+use std::collections::{BTreeMap, HashMap, LinkedList};
+//use hyper::server::Server;
 use std::string::String;
 use std::sync::{Arc, Mutex};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::convert::Infallible;
 use std::ops::Add;
+use std::str::FromStr;
 use handlebars::Handlebars;
-use hyper::{Body, Method, Request, Response, StatusCode};
-use hyper::body::HttpBody;
-use hyper::header::CONTENT_TYPE;
+use hyper::{Body, Request, Response, Server};
+use hyper::header;
 use hyper::http::{Error, HeaderValue};
+use hyper::server::conn::Http;
 use hyper::service::{make_service_fn, service_fn};
-use hyper::server::conn::AddrStream;
+use tokio::net::TcpListener;
+// use hyper::server::conn::AddrStream;
 // use serde_json::Value::String;
-use crate::data;
+use crate::{config, Config, data};
 use crate::data::Data;
 use crate::httpserver::Action::{OFF, ON};
 
 pub struct HttpServer {
-    addr: SocketAddr,
+    config: Arc<config::Config>,
     data: Arc<Mutex<data::Data>>,
 }
 
-
-
-static mut handlebars: Option<Handlebars> = None;
-
 enum Action { NONE, ON, OFF, DIMMER { percent: u8 } }
-
 
 
 // https://hyper.rs/guides/server/echo/
 
 
 impl HttpServer {
+    pub fn create(config: Arc<config::Config>, data: Arc<Mutex<data::Data>>) -> HttpServer {
+        // let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+        let result = HttpServer { config, data };
 
-    pub unsafe fn create(data: Arc<Mutex<data::Data>>) -> HttpServer {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
-        if handlebars.is_none() {
-            let mut h = Handlebars::new();
-            h.register_template_file("index", "res/tpl/tpl_index.html").expect("ERROR");
-            h.register_template_file("form", "res/tpl/tpl_form").expect("ERROR");
+        // demo:
+        let req = hyper::Request::builder()
+            .uri("http://localhost")
+            .header("X-Test", "TEST")
+            .body(Default::default()).unwrap();
+        let response = result.create_response(
+            req,
+            &Default::default(),
+            Arc::new(Mutex::new(Data::new())))
+            .unwrap();
+        println!("Response= {response:?}");
 
-            handlebars = Some(h);
-        }
-        HttpServer { addr, data }
+        result
     }
 
-    pub async fn thread_function(&self) -> () {
-        // And a MakeService to handle each connection...
-        // let make_service = make_service_fn(|_conn| async {
-        //     Ok::<_, Infallible>(service_fn(Self::hello_world ))
-        // });
 
-        // And a MakeService to handle each connection...
-        async fn create_response(req: Request<Body>, data: Arc<Mutex<Data>>) -> Result<Response<Body>, Infallible> {
-            let d = data.lock().expect("");
+    async fn handle(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+        Ok(Response::new(Body::from("Hello World")))
+    }
 
-            let mut a = form_urlencoded::parse(req.uri().query().expect("query?").as_bytes());
-            if let l = a.find(|(a, b)| a == "action" ) {
-                println!("action: {:?}", l);
-            }
-            // let action = a
-            //     .find(|(k,_)| k.eq("action"))
-            //
-            //     .is
-            //         "on" => Some(ON),
-            //         "off" => Some(OFF),
-            //         _ => None
-            //     }).or(None);
-            //
-            // println!("ACTION: ---> {action:?}");
+    fn create_response(&self,
+              request: Request<Body>,
+              handlebars: &Handlebars,
+              data: Arc<Mutex<Data>>) -> Result<Response<Body>, Infallible> {
+        let data = data.lock().unwrap();
 
-            let path = req.uri().path();
-            let mut msg = String::from("TEST:\n");
-            msg.push_str(&format!("path: {path}\n"));
-            for (id, m) in &d.measurements {
-                msg.push_str(format!("{id}: {:?}\n", m.value).as_str());
-            }
+        println!("---- Request: {request:?}");
+        //let mut a = form_urlencoded::parse(req.uri().query().expect("query?").as_bytes());
+        // if let l = a.find(|(a, b)| a == "action" ) {
+        //     println!("action: {:?}", l);
+        // }
 
-            let mut data = BTreeMap::new();
-            data.insert("title".to_string(), "Test".to_string());
-            let a = unsafe {
-                let h = handlebars.as_ref().unwrap();
-                h.render("index", &data).unwrap()
-            };
-            let b = unsafe {
-                let h = handlebars.as_ref().unwrap();
-                h.render("form", &data).unwrap()
-            };
-            msg.push_str(&a);
-            msg.push_str(&b);
 
-            let body = Body::from(msg);
+        let r1 = Config::Room { name: "AAA" };
+        let r2 = Config::Room { name: "BBB" };
+        let rooms = [r1, r2];
 
-            let mut response = Response::new(body);
-            response.headers_mut().insert(CONTENT_TYPE, "text/html".parse().unwrap());
-
-            Ok::<_, Infallible>(response)
+        let path = request.uri().path();
+        let template_name = match request.uri().path() {
+            "/" => "index",
+            _ => path,  // all others
         };
+        println!("path: '{path}'");
+        let mut msg = String::from("TEST:\n");
+        msg.push_str(&format!("path: {path}\n"));
+        for (id, m) in &data.measurements {
+            msg.push_str(format!("{id}: {:?}\n", m.value).as_str());
+        }
 
-        let data = self.data.clone();
-        // create a MakeService from a function
-        let make_svc = make_service_fn(move |_conn| { // outer closure
-            let data = data.clone();
-            async move { // async block
-                Ok::<_, Infallible>(service_fn(move |_req| { // inner closure
-                    create_response(_req, data.clone())
+
+        let mut handlebars = Handlebars::new();
+        handlebars.register_template_file("index", "res/tpl/tpl_index.html");
+
+        let mut template_values = BTreeMap::new();
+        template_values.insert()
+        template_values.insert("title".to_string(), "---- MEINE ÜBERSCHRIFT ----".to_string());
+        let index = handlebars.render(template_name, &template_values).unwrap();
+        // let b = unsafe {
+        //     let h = handlebars.as_ref().unwrap();
+        //     h.render("form", &data).unwrap()
+        // };
+        msg.push_str(index.as_str());
+        // msg.push_str(&b);
+
+        let body = Body::from(msg);
+
+        let response = Response::builder()
+            .header(header::CONTENT_TYPE, "text/html")
+            .status(hyper::StatusCode::OK)
+            .body(body)
+            .expect("Could not create response");
+
+        Ok::<_, Infallible>(response)
+    }
+
+
+    pub async fn thread_function(&self) -> Result<(), String> {
+        let s = self.config.http_listen_address.as_str();
+        let address = SocketAddrV4::from_str(s).unwrap();
+
+        println!("httpserver-address: {address}");
+
+        // https://docs.rs/hyper/latest/hyper/server/index.html
+
+//         let service = hyper::service::make_service_fn();
+//
+//         let listener = TcpListener::bind(self.addr)
+//             .await.expect("");
+//
+//         loop {
+//             println!("loop {{");
+//             let (stream, addr) = listener.accept()
+//                 .await.expect("accept()");
+//             println!(" accepted connection from {:?}", addr);
+
+        let addr: SocketAddr = (Ipv4Addr::new(127, 0, 0, 1), 8080).into();
+        let make_svc = make_service_fn(|socket:&hyper::server::conn::AddrStream| {
+            let remote_addr = socket.remote_addr();
+            async move {
+                Ok::<_, Infallible>(service_fn(move |_: Request<Body>| async move {
+                    Ok::<_, Infallible>(
+                        Response::new(Body::from(format!("Hello, {}!", remote_addr)))
+                    )
                 }))
             }
         });
 
-        // Then bind and serve...
-        let builder = Server::bind(&self.addr)
-            .serve(make_svc);
+        let server = Server::bind(&addr)
+                 .serve(make_svc);
 
-
-        // And run forever...
-        if let Err(e) = builder.await {
-            eprintln!("server error: {}", e);
-        }
+        server.await.expect("Server failuer");
+        Ok(())
     }
 }

@@ -32,7 +32,7 @@ pub struct Measurement {
 #[derive(Debug)]
 pub struct Data {
     // sensor-id
-    pub measurements: HashMap<String, Measurement>,
+    pub measurements: HashMap<String, Measurement>
 }
 
 impl Data {
