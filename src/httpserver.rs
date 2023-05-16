@@ -41,10 +41,7 @@ impl HttpServer {
             .uri("http://localhost")
             .header("X-Test", "TEST")
             .body(Default::default()).unwrap();
-        let response = result.create_response(
-            req,
-            &Default::default(),
-            Arc::new(Mutex::new(Data::new())))
+        let response = result.create_response(req)
             .unwrap();
         println!("Response= {response:?}");
 
@@ -58,7 +55,6 @@ impl HttpServer {
 
     fn create_response(&self,
               request: Request<Body>) -> Result<Response<Body>, Infallible> {
-        let data = self.data.clone().lock().unwrap();
 
         println!("---- Request: {request:?}");
         //let mut a = form_urlencoded::parse(req.uri().query().expect("query?").as_bytes());
@@ -79,6 +75,7 @@ impl HttpServer {
         println!("path: '{path}'");
         let mut msg = String::from("TEST:\n");
         msg.push_str(&format!("path: {path}\n"));
+        let data = self.data.lock().unwrap();
         for (id, m) in &data.measurements {
             msg.push_str(format!("{id}: {:?}\n", m.value).as_str());
         }
