@@ -57,10 +57,8 @@ impl HttpServer {
     }
 
     fn create_response(&self,
-              request: Request<Body>,
-              handlebars: &Handlebars,
-              data: Arc<Mutex<Data>>) -> Result<Response<Body>, Infallible> {
-        let data = data.lock().unwrap();
+              request: Request<Body>) -> Result<Response<Body>, Infallible> {
+        let data = self.data.clone().lock().unwrap();
 
         println!("---- Request: {request:?}");
         //let mut a = form_urlencoded::parse(req.uri().query().expect("query?").as_bytes());
@@ -69,8 +67,8 @@ impl HttpServer {
         // }
 
 
-        let r1 = Config::Room { name: "AAA" };
-        let r2 = Config::Room { name: "BBB" };
+        let r1 = config::Room { name: "AAA".to_string() };
+        let r2 = config::Room { name: "BBB".to_string() };
         let rooms = [r1, r2];
 
         let path = request.uri().path();
@@ -87,10 +85,11 @@ impl HttpServer {
 
 
         let mut handlebars = Handlebars::new();
-        handlebars.register_template_file("index", "res/tpl/tpl_index.html");
+        handlebars.register_template_file("index", "res/tpl/tpl_index.html")
+            .expect("Could not register template file for 'index'");
 
         let mut template_values = BTreeMap::new();
-        template_values.insert()
+        //template_values.insert()
         template_values.insert("title".to_string(), "---- MEINE ÜBERSCHRIFT ----".to_string());
         let index = handlebars.render(template_name, &template_values).unwrap();
         // let b = unsafe {
@@ -112,7 +111,7 @@ impl HttpServer {
     }
 
 
-    pub async fn thread_function(&self) -> Result<(), String> {
+    pub async fn thread_function(&self) -> Result<(), ()> {
         let s = self.config.http_listen_address.as_str();
         let address = SocketAddrV4::from_str(s).unwrap();
 
@@ -134,9 +133,11 @@ impl HttpServer {
         let addr: SocketAddr = (Ipv4Addr::new(127, 0, 0, 1), 8080).into();
         let make_svc = make_service_fn(|socket:&hyper::server::conn::AddrStream| {
             let remote_addr = socket.remote_addr();
-            async move {
-                Ok::<_, Infallible>(service_fn(move |_: Request<Body>| async move {
+            async move  {
+                Ok::<_, Infallible>(service_fn(move |request: Request<Body>| async move {
                     Ok::<_, Infallible>(
+                        // self.create_response(request)
+                        //     .expect("Could not create response for request {request:?}")
                         Response::new(Body::from(format!("Hello, {}!", remote_addr)))
                     )
                 }))
@@ -144,9 +145,9 @@ impl HttpServer {
         });
 
         let server = Server::bind(&addr)
-                 .serve(make_svc);
+                 .serve( make_svc);
 
-        server.await.expect("Server failuer");
+        server.await.expect("Server failure");
         Ok(())
     }
 }

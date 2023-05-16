@@ -51,9 +51,9 @@ async fn main() -> Result<()> {
 
     //tokio::join!(future_knx, future_httpserver);
 
-    future_httpserver.await;
-    // future_youless.await;
-    // tokio::join!(future_youless, future_knx);
+    let (_first, _second) = tokio::join!(future_httpserver, future_knx);
+
+    // tokio::join!(future_knx);
 
     Ok(())
 }

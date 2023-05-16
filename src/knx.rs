@@ -89,41 +89,44 @@ pub fn create(config: Arc<Config>, data: Arc<Mutex<data::Data>>) -> Result<Knx, 
 
 
 impl Knx {
-    pub async fn thread_function(&mut self) -> Result<(), std::io::Error> {
+    pub async fn thread_function(&mut self) -> Result<(),()> {
         let bind_addr = (
             self.config.knx_multicast_interface,
             self.config.knx_multicast_port);
-        let socket = UdpSocket::bind(bind_addr)
-            .await?;
+        let mut socket = UdpSocket::bind(bind_addr)
+            .await
+            .expect("could not bind socket");
             // await.map_err(|e|e.to_string()).expect("bind()");
-            socket
-                .join_multicast_v4(self.config.knx_multicast_group,
-                                 self.config.knx_multicast_interface)
-                .expect("Could not join multicast group");
-       // self.socket = Some(socket);
+        socket
+            .join_multicast_v4(
+                self.config.knx_multicast_group,
+                self.config.knx_multicast_interface)
+            .expect("Could not join multicast group");
+
         loop {
             println!("knx: loop begin");
             let mut buf = [0; 128];
             println!("waiting for frame...");
-         //   let socket = self.socket.as_ref().unwrap();
             let (number_of_bytes, addr) = socket.recv_from(&mut buf)
-                .await.expect("can not call recv_from() on udp soecket");
-            // cleate a slice
+                .await.expect("can not call recv_from() on udp socket");
+            // create a slice
             let filled_buf = &mut buf[..number_of_bytes];
-            println!("message {:02X?}", &filled_buf);
-            print!("         ");
-            for a in 0..number_of_bytes { print!("{:2}  ", a); };
-            println!(" <-- ");
+            println!(
+                "message {:02X?}", &filled_buf);
+            for a in 0..number_of_bytes {
+                print!("{:2}  ", a); };
 
-            let len = filled_buf.len();
-            if len < 16 {
-                println!("message with size {} is too short", len);
-                continue;
-            }
-            if len > 50 {
-                println!("message with size {} is too long", len);
-                continue;
-            }
+            match filled_buf.len() {
+                x if x < 16 => {
+                    println!("message with size {} is too short", x);
+                    continue;
+                },
+                x if x > 50 => {
+                    println!("message with size {} is too long", x);
+                    continue;
+                },
+                any => {}
+            };
 
             let msg = Message::from_raw(filled_buf);
             let a = self.get_sensor_from(&msg.src);
