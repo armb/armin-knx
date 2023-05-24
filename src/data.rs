@@ -29,7 +29,7 @@ pub struct Measurement {
     pub(crate) value: Option<f32>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Data {
     // sensor-id
     pub measurements: HashMap<String, Measurement>

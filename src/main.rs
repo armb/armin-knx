@@ -1,5 +1,7 @@
+use std::borrow::Borrow;
 use std::sync::{Arc, Mutex};
 use crate::config::Config;
+use httpserver::HttpServer;
 
 mod knx;
 mod config;
@@ -47,7 +49,7 @@ async fn main() -> Result<()> {
 
     let future_knx =  knx.thread_function();
     // let future_httpserver =  async { () }; //httpserver.thread_function();
-    let future_httpserver = httpserver.thread_function();
+    let future_httpserver = unsafe { HttpServer::thread_function() };
 
     //tokio::join!(future_knx, future_httpserver);
 

@@ -1,5 +1,5 @@
 {
-  "http_listen_address": "127.0.0.1:8081",
+  "http_listen_address": "0.0.0.0:8081",
   "knx_server":null,
   "knx_multicast_group": "224.0.23.12",
   "knx_multicast_interface": "192.168.0.195",
@@ -18,16 +18,23 @@
       "name": "Bad unten"
     }
   },
+  "actors": {
+    "act-og.bedroom.spots": {
+      "name": "Spots",
+      "room_id": "og.bedroom",
+      "parameter": "1"
+    }
+  },
   "sensors": {
     "eg.flur.brightness": {
       "dimension": "brightness",
-      "room": "eg.floor",
+      "room_id": "eg.floor",
       "name": "eg.floor:helligkeit",
       "eibaddr": "1/2/2"
     },
     "og.bedroom.temp": {
       "dimension": "temperature",
-      "room": "og.bedroom",
+      "room_id": "og.bedroom",
       "name": "Schlafzimmer",
       "eibaddr": "1/2/4"
     }

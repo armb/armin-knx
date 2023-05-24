@@ -16,23 +16,24 @@ impl EibAddr {
 }
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Room {
+    // pub id: String,
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Actor {
-    name: String,
-    room: String,
-    parameter: String,
+    pub name: String,
+    pub room_id: String,
+    pub parameter: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Sensor {
     pub dimension: String,
     pub name: String,
-    pub room: String,
+    pub room_id: String,
     pub eibaddr: String,
 }
 
@@ -51,7 +52,7 @@ impl Sensor {
 
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub http_listen_address: String,
     pub knx_server: Option<String>,
@@ -60,6 +61,7 @@ pub struct Config {
     pub knx_multicast_port: u16,
     pub rooms: HashMap<String, Room>,
     pub sensors: HashMap<String, Sensor>,
+    pub actors: HashMap<String, Actor>,
 }
 
 
@@ -78,6 +80,7 @@ impl Config {
             knx_multicast_port: 3086,
             rooms: HashMap::new(),
             sensors: HashMap::new(),
+            actors: HashMap::new(),
         }
     }
 

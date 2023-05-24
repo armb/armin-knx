@@ -3,19 +3,29 @@
 {{title}}
 Hallo.
 
-{{> form}}
-
 <table border="1em">
     <tr>
-        <th>---</th></tr>
-    {{#each rooms}}
+        <th>---</th>
+    </tr>
     <tr>
-        <td>{{this.name}}</td>
-        {{#each this.sensors}}
-        <td>{{this.name}}</td>
-        {{/each}}
+        <th></th>
+        <th><b>Name</b></th>
+    </tr>
+    {{#each rooms as |r|}}
+    <tr>
+        <td>{{@index}}</td>
+        <td>{{r.name}}</td>
+        <td>{{#each r.sensors as |s|}}
+            {{s.eibaddr}}<br/>
+            {{/each}}
+        </td>
+        <td>{{#each r.actors as |a|}}
+            {{a.name}}<br/>
+            {{/each}}
+        </td>
     </tr>
     {{/each}}
+
 </table>
 
 </body>
