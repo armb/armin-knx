@@ -4,37 +4,72 @@
   "knx_multicast_group": "224.0.23.12",
   "knx_multicast_interface": "192.168.0.195",
   "knx_multicast_port": 3671,
+
+  "room_list": [ "eg.wohnen", "eg.hobby", "og.till" ],
   "rooms": {
+    "eg.wohnen": {
+      "name": "EG Wohnzimmer"
+    },
+    "eg.hobby": {
+      "name": "EG Hobby"
+    },
     "eg.floor": {
       "name": "EG Flur"
     },
-    "od.bedroom": {
+    "og.schlafzimmer": {
       "name": "Schlafzimmer"
+    },
+    "1st.bathroom": {
+      "name": "Badezimmer"
+    },
+    "og.till": {
+      "name": "Tills Zimmer"
     },
     "eg.kitchen": {
       "name": "Küche"
     },
     "eg.bathroom": {
       "name": "Bad unten"
+    },
+    "dachboden" : {
+      "name": "Dachboden"
+    },
+    "garage": {
+      "name": "Garage"
     }
   },
   "actors": {
+    "act-eg.wohnen.spots": {
+      "name": "Spots",
+      "room_id": "eg.wohnen",
+      "commands": [ "on", "off", "dim50" ]
+    },
+    "act-eg.kitchen.sockets": {
+      "name": "Dosen",
+      "room_id": "eg.kitchen",
+      "commands": [ "on", "off" ]
+    },
+    "act-eg.kitchen.spots": {
+      "name": "Spots",
+      "room_id": "eg.kitchen",
+      "commands": [ "on", "off" ]
+    },
     "act-og.bedroom.spots": {
       "name": "Spots",
       "room_id": "og.bedroom",
-      "parameter": "1"
+      "commands": [ "on", "off", "dim" ]
     }
   },
   "sensors": {
-    "eg.flur.brightness": {
+    "sensor-eg.floor.brightness": {
       "dimension": "brightness",
       "room_id": "eg.floor",
       "name": "eg.floor:helligkeit",
       "eibaddr": "1/2/2"
     },
-    "og.bedroom.temp": {
+    "sensor-og.till.temp": {
       "dimension": "temperature",
-      "room_id": "og.bedroom",
+      "room_id": "og.till",
       "name": "Schlafzimmer",
       "eibaddr": "1/2/4"
     }

@@ -66,8 +66,6 @@ impl Message {
                //  println!("Value (raw[17]|raw[18]): {}", val);
                 let m = Measurement { dimension: Dimension::Brightness, unit: Unit::One, value: Some(value) };
                 measurement = Some(m);
-
-
             },
             17 => {
                 println!("len=17: on/off value?");

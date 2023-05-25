@@ -26,7 +26,7 @@ pub struct Room {
 pub struct Actor {
     pub name: String,
     pub room_id: String,
-    pub parameter: String,
+    pub commands: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -59,6 +59,7 @@ pub struct Config {
     pub knx_multicast_group: Ipv4Addr,
     pub knx_multicast_interface: Ipv4Addr,
     pub knx_multicast_port: u16,
+    pub room_list: Vec<String>,
     pub rooms: HashMap<String, Room>,
     pub sensors: HashMap<String, Sensor>,
     pub actors: HashMap<String, Actor>,
@@ -78,6 +79,7 @@ impl Config {
             knx_multicast_group: Ipv4Addr::UNSPECIFIED,
             knx_multicast_interface: Ipv4Addr::UNSPECIFIED,
             knx_multicast_port: 3086,
+            room_list: vec![],
             rooms: HashMap::new(),
             sensors: HashMap::new(),
             actors: HashMap::new(),

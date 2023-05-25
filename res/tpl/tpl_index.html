@@ -1,8 +1,6 @@
 <html>
 <body>
 {{title}}
-Hallo.
-
 <table border="1em">
     <tr>
         <th>---</th>
@@ -16,11 +14,19 @@ Hallo.
         <td>{{@index}}</td>
         <td>{{r.name}}</td>
         <td>{{#each r.sensors as |s|}}
-            {{s.eibaddr}}<br/>
+                {{s.measurement}}<br/>
             {{/each}}
         </td>
         <td>{{#each r.actors as |a|}}
-            {{a.name}}<br/>
+            {{a.name}}
+                {{#each a.commands as |c|}}
+                    {{#if (eq c "on")}}
+                        <button type="button">AN</button>{{/if}}
+                    {{#if (eq c "dim50")}}
+                        <button type="button">50%</button>{{/if}}
+                    {{#if (eq c "off")}}
+                        <button type="button">AUS</button>{{/if}}
+                {{/each}}<br/>
             {{/each}}
         </td>
     </tr>

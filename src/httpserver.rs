@@ -11,6 +11,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use handlebars::{to_json, Handlebars};
 use hyper::{Body, Request, Response, Server};
+use hyper::body::HttpBody;
 use hyper::header;
 use hyper::http::{Error, HeaderValue};
 use hyper::server::conn::Http;
@@ -61,9 +62,9 @@ impl HttpServer {
               request: Request<Body>) -> Result<Response<Body>, Infallible> {
 
         #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateSensor { eibaddr: String };
+        struct TemplateSensor { name: String, measurement: String };
         #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateActor { name: String };
+        struct TemplateActor { name: String, commands: Vec<String> };
         #[derive(Serialize, Deserialize, Debug, Clone)]
         struct TemplateRoom {
             name: String,
@@ -71,18 +72,38 @@ impl HttpServer {
             actors: Vec<TemplateActor> };
 
         let mut template_rooms: Vec<TemplateRoom> = vec![];
-        for (room_id, room) in &self.config.rooms {
+        for room_id in &self.config.room_list {
+            if ! self.config.rooms.contains_key(room_id) {
+                eprintln!("Raum {room_id} nicht gefunden.");
+            }
+            let room = self.config.rooms.get(room_id)
+                .expect("Raum nicht gefunden");
             let mut room_sensors: Vec<TemplateSensor> = vec![];
             for (sensor_id, sensor) in &self.config.sensors {
-                println!("sensor in {0}: {1}", room.name, sensor_id);
-                let template_sensor = TemplateSensor { eibaddr: sensor.eibaddr.clone() };
-                room_sensors.push( template_sensor );
+                if sensor.room_id.eq(room_id) {
+                    println!("sensor in {0}: {1}", room.name, sensor_id);
+                    let data = self.data.lock().unwrap();
+                    let measurement = match data.measurements.get(sensor_id) {
+                        Some(measurement) => { format!("...") },
+                        None => "?".to_string()
+                    };
+                    let template_sensor = TemplateSensor {
+                        name: sensor.name.clone(),
+                        measurement
+                    };
+                    room_sensors.push(template_sensor);
+                }
             }
             let mut room_actors: Vec<TemplateActor> = vec![];
             for (actor_id, actor) in  &self.config.actors {
-                println!("actor {0} in {1}", actor_id, actor.room_id);
-                let template_actor = TemplateActor { name: actor.name.clone() };
-                room_actors.push( template_actor );
+                if actor.room_id.eq(room_id) {
+                    println!("actor {0} in {1}: {2:?}", actor_id, actor.room_id, actor.commands);
+                    let template_actor = TemplateActor {
+                        name: actor.name.clone(),
+                        commands: actor.commands.clone()
+                    };
+                    room_actors.push(template_actor);
+                }
             }
             let template_room = TemplateRoom {
                 name: room.name.clone(),
@@ -92,36 +113,34 @@ impl HttpServer {
             template_rooms.push( template_room );
          }
 
-        let path = request.uri().path();
-        let template_name = match request.uri().path() {
-            "/" => "index",
-            _ => path,  // all others
-        };
-        println!("path: '{path}'");
+        let response = match request.uri().path() {
+            "/" => {
+                let mut handlebars = Handlebars::new();
+                handlebars.register_template_file("index", "res/tpl/tpl_index.html")
+                    .expect("Could not register template file for 'index'");
 
-        let mut handlebars = Handlebars::new();
-        handlebars.register_template_file("index", "res/tpl/tpl_index.html")
-            .expect("Could not register template file for 'index'");
+                let mut template_values = Map::<String, Json>::new();
+                //template_values.insert()
+                template_values.insert("title".to_string(), json!(""));
+                template_values.insert("rooms".to_string(), json!(template_rooms));
+                let content = handlebars.render("index", &template_values).unwrap();
 
-        let mut template_values = Map::<String, Json>::new();
-        //template_values.insert()
-        template_values.insert("title".to_string(), json!("----TITLE ----"));
-        template_values.insert("rooms".to_string(), json!(template_rooms));
-        let index = handlebars.render(template_name, &template_values).unwrap();
-        // let b = unsafe {
-        //     let h = handlebars.as_ref().unwrap();
-        //     h.render("form", &data).unwrap()
-        // };
-        // msg.push_str(index.as_str());
-        // msg.push_str(&b);
+                let body = Body::from(content);
 
-        let body = Body::from(index);
+                Response::builder()
+                    .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+                    .status(hyper::StatusCode::OK)
+                    .body(body)
+            },
+            _ => {
+                let body = Body::from("ERROR");
 
-        let response = Response::builder()
-            .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
-            .status(hyper::StatusCode::OK)
-            .body(body)
-            .expect("Could not create response");
+                Response::builder()
+                    .header(header::CONTENT_TYPE, "text/plain")
+                    .status(hyper::StatusCode::NOT_FOUND)
+                    .body(body)
+            }
+        }.expect("Could not create response");
 
         Ok::<_, Infallible>(response)
     }
@@ -132,7 +151,7 @@ impl HttpServer {
         let c = httpserver.clone().expect("httpserver");
         let addr_str = c.config.http_listen_address.clone();
         let addr = SocketAddr::from_str(&addr_str).expect("could not parse {addr_str} as SocketAddrV4");
-        println!("httpserver-address: {addr:?}");;
+        println!("httpserver-address: {addr:?}");
 
         //let addr: SocketAddr = (Ipv4Addr::new(0, 0, 0, 0), 8080).into();
 
