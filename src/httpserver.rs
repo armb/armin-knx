@@ -116,6 +116,7 @@ impl HttpServer {
         let response = match request.uri().path() {
             "/" => {
                 let mut handlebars = Handlebars::new();
+                handlebars.set_dev_mode(true);
                 handlebars.register_template_file("index", "res/tpl/tpl_index.html")
                     .expect("Could not register template file for 'index'");
 
