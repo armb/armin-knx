@@ -2,7 +2,7 @@
   "http_listen_address": "0.0.0.0:8081",
   "knx_server":null,
   "knx_multicast_group": "224.0.23.12",
-  "knx_multicast_interface": "192.168.0.195",
+  "knx_multicast_interface": "127.0.0.1",
   "knx_multicast_port": 3671,
 
   "room_list": [ "eg.wohnen", "eg.hobby", "og.till" ],

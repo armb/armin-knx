@@ -88,7 +88,7 @@ impl Config {
 
     pub fn read(path: &String) -> Result<Config, String> {
         let content = std::fs::read_to_string(path)
-            .expect("Could not read file.");
+            .expect("Could not read file at {path}");
 
         let mut config: Config = serde_json::from_str(&content)
             .expect(":-(");

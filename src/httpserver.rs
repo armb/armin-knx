@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use handlebars::{to_json, Handlebars};
 use hyper::{Body, Request, Response, Server};
 use hyper::body::HttpBody;
+use hyper::server::conn::AddrStream;
 use hyper::header;
 use hyper::http::{Error, HeaderValue};
 use hyper::server::conn::Http;
@@ -37,9 +38,6 @@ pub struct HttpServer {
 static mut httpserver: Option<Arc<HttpServer>> = None;
 
 enum Action { NONE, ON, OFF, DIMMER { percent: u8 } }
-
-
-// https://hyper.rs/guides/server/echo/
 
 
 impl HttpServer {
@@ -156,8 +154,8 @@ impl HttpServer {
 
         //let addr: SocketAddr = (Ipv4Addr::new(0, 0, 0, 0), 8080).into();
 
-        let make_svc = make_service_fn(|socket:&hyper::server::conn::AddrStream| {
-            let remote_addr = socket.remote_addr();
+        let make_svc = make_service_fn(|socket:&AddrStream| {
+            //let remote_addr = socket.remote_addr();
             let service= service_fn(move |request: Request<Body>| async move {
                 Ok::<_, Infallible>({
                     let c = httpserver.clone().expect("httpserver");
