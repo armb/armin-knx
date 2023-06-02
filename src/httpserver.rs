@@ -57,7 +57,7 @@ impl HttpServer {
 
 
     fn create_response(&self,
-              request: Request<Body>) -> Result<Response<Body>, Infallible> {
+              request: Request<Body>) -> Result<Response<Body>, Error> {
 
         #[derive(Serialize, Deserialize, Debug, Clone)]
         struct TemplateSensor { name: String, measurement: String };
@@ -141,7 +141,7 @@ impl HttpServer {
             }
         }.expect("Could not create response");
 
-        Ok::<_, Infallible>(response)
+        Ok(response)
     }
 
 
