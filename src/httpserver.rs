@@ -20,33 +20,38 @@ use hyper::service::{make_service_fn, service_fn};
 use tokio::net::TcpListener;
 // use hyper::server::conn::AddrStream;
 // use serde_json::Value::String;
-use crate::{config, Config, data};
+use crate::{config, Config, data, knx};
 use crate::data::Data;
 use crate::config::{Room};
 use crate::httpserver::Action::{OFF, ON};
 
 use serde_json::value::{Map, Value as Json};
 use serde_json::json;
+use crate::knx::{Command, KnxSocket};
 
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct HttpServer {
     config: Arc<config::Config>,
     data: Arc<Mutex<data::Data>>,
+    knx: KnxSocket
 }
 
-static mut httpserver: Option<Arc<HttpServer>> = None;
+static mut httpserver: Option<Arc<Mutex<HttpServer>>> = None;
 
 enum Action { NONE, ON, OFF, DIMMER { percent: u8 } }
 
 
 impl HttpServer {
-    pub fn create(config: Arc<config::Config>, data: Arc<Mutex<data::Data>>) -> Arc<HttpServer> {
+    pub async fn create(config: Arc<config::Config>, data: Arc<Mutex<data::Data>>) -> Arc<Mutex<HttpServer>> {
         // let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
-        let s = Arc::new(HttpServer { config, data });
-        unsafe {
-            httpserver = Some(s.clone());
-        }
+        let knx = KnxSocket::create().await.unwrap();
+
+        //httpserver = Some(Arc<Mutex<HttpServer>>)
+        let s = Arc::new(Mutex::new( HttpServer { config, data, knx } ) );
+        // unsafe {
+        //     httpserver = Some(s)
+        // };
         s
     }
 
@@ -55,9 +60,12 @@ impl HttpServer {
         Ok(Response::new(Body::from("Hello World")))
     }
 
+    async fn sendFrame(&mut self, group: u16, command: &Command) {
+        self.knx.send(group, command).await;
+    }
 
-    fn create_response(&self,
-              request: Request<Body>) -> Result<Response<Body>, Error> {
+    fn create_response(&mut self,
+                       request: Request<Body>) -> Result<Response<Body>, Error> {
 
         #[derive(Serialize, Deserialize, Debug, Clone)]
         struct TemplateSensor { name: String, measurement: String };
@@ -112,6 +120,18 @@ impl HttpServer {
          }
 
         let response = match request.uri().path() {
+            "/send" => {
+                let group = 0x02u16;
+                let command = knx::Command::Switch(true);
+                self.sendFrame(group, &command);
+
+                let body = Body::from("DONE");
+
+                Response::builder()
+                    .header(header::CONTENT_TYPE, "text/plain")
+                    .status(hyper::StatusCode::OK)
+                    .body(body)
+            },
             "/" => {
                 let mut handlebars = Handlebars::new();
                 handlebars.set_dev_mode(true);
@@ -148,7 +168,7 @@ impl HttpServer {
     pub async unsafe fn thread_function() -> Result<(), ()> {
 
         let c = httpserver.clone().expect("httpserver");
-        let addr_str = c.config.http_listen_address.clone();
+        let addr_str = c.lock().unwrap().config.http_listen_address.clone();
         let addr = SocketAddr::from_str(&addr_str).expect("could not parse {addr_str} as SocketAddrV4");
         println!("httpserver-address: {addr:?}");
 
@@ -158,8 +178,14 @@ impl HttpServer {
             //let remote_addr = socket.remote_addr();
             let service= service_fn(move |request: Request<Body>| async move {
                 Ok::<_, Infallible>({
-                    let c = httpserver.clone().expect("httpserver");
-                    c.create_response(request).expect("create_response() failed")
+                    //let mut c = httpserver.clone().expect("httpserver");
+                    let response = if let Some(h) = &httpserver {
+                        Ok( h.lock().unwrap().create_response(request).expect("create_response() failed") )
+                    } else {
+                        Err( () )
+                    };
+
+                    response.expect("bad response")
                     // self.create_response(request)
                     //     .expect("Could not create response for request {request:?}")
                     //Response::new(Body::from(format!("Hello, {}!", "SAD"))) //remote_addr)))

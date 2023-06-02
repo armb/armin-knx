@@ -1,7 +1,9 @@
 use std::borrow::Borrow;
 use std::error::Error;
+use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 use regex;
+use tokio::io;
 use crate::config::{Config, EibAddr, Sensor};
 use crate::data::{Dimension, Measurement, Unit};
 
@@ -30,7 +32,7 @@ fn parse_addr(s: &str) -> Result<EibAddr,String> {
     }
 }
 
-
+#[derive(Debug)]
 pub enum Command {
     Dimmer(u8), //percent
     Switch(bool),
@@ -51,6 +53,44 @@ pub struct Message {
     measurement: Option<Measurement>,
 }
 
+#[derive(Debug, Clone)]
+pub struct SendMessage {
+    raw: Vec<u8>,
+}
+
+#[derive(Debug)]
+pub struct KnxSocket {
+    udp: UdpSocket,
+}
+
+impl KnxSocket {
+    // do not bind to local address
+    pub async fn create() -> tokio::io::Result<KnxSocket> {
+        let udp = UdpSocket::bind( ("127.0.0.1", 8090)  ).await?;
+        Ok ( KnxSocket{ udp } )
+    }
+    pub async fn bind(local_address: &String, local_port: u16) -> tokio::io::Result<KnxSocket> {
+        let udp = UdpSocket::bind( (local_address.as_str(), local_port)).await?;
+        Ok ( KnxSocket{ udp } )
+    }
+    pub async fn join(&mut self, multicast_group: String, multicast_interface: String) -> io::Result<()> {
+        self.udp
+            .join_multicast_v4(multicast_group.parse().unwrap(), multicast_interface.parse().unwrap())?;
+        Ok( () )
+    }
+    pub async fn send(&mut self, grp: u16, command: &Command) {
+        let msg = match command {
+            //Command::Dimmer(x) => create_knx_frame_dimmer(grp, x),
+            Command::Switch(x) => create_knx_frame_onoff(grp, *x),
+            //Command::UpDownTarget(x,max) => create_knx_frame_rollo(grp, x, max),
+            _ => Err( () )
+        };
+
+        let msg = msg.expect("could not create knx frame for command {command:?}");
+
+        self.udp.send(msg.raw.as_slice()).await.expect("send() failed");
+    }
+}
 
 impl Message {
     pub fn from_raw(raw: &[u8]) -> Message {
@@ -145,20 +185,6 @@ impl Knx {
     }
 
 
-    // pub fn sendRaw(&mut self, msg: Message) {
-    // 	self.socket.send(msg.raw.as_slice()).expect("send() failed");
-    // }
-
-    pub fn send(&mut self, grp: u16, command: Command) {
-        let msg = match command {
-            Command::Dimmer(x) => create_knx_frame_dimmer(grp, x),
-            Command::Switch(x) => create_knx_frame_onoff(grp, x),
-            Command::UpDownTarget(x,max) => create_knx_frame_rollo(grp, x, max)
-        };
-
-       //  self.socket.send(msg.raw.as_slice()).expect("send() failed");
-    }
-
     pub fn get_sensor_from(&self, addr: &EibAddr) -> Option<(&String, &Sensor)> {
         let addr_string = format!("{}/{}/{}", addr.0, addr.1, addr.2);
         for (id, sensor) in &self.config.sensors {
@@ -171,10 +197,10 @@ impl Knx {
 
 }
 
-pub fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Message {
+pub fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Result<SendMessage, ()> {
 
     let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
-    let mut v = vec![
+    let mut raw = vec![
         // knx/ip header
         // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
         0x06u8, 0x10, 0x05, 0x30, 0x00, 0x11,
@@ -185,75 +211,75 @@ pub fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Message {
         0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
         0x12, 0x7e  // src: 0x127e -> 1.2.126
     ];
-    v.append( &mut dst );
-    v.push( 1u8 ); //len
-    v.push( 0x00 ); // 'TPCI'
-    if onoff { v.push( 0x81u8 ); } else { v.push( 0x80 ); }
-    println!(" onoff: {:X?}", v);
+    raw.append( &mut dst );
+    raw.push( 1u8 ); //len
+    raw.push( 0x00 ); // 'TPCI'
+    if onoff { raw.push( 0x81u8 ); } else { raw.push( 0x80 ); }
+    println!(" onoff: {:X?}", raw);
 
-    Message { src: EibAddr(0, 0, 0), dst: EibAddr(0, 0, 0), measurement: None }
+    Ok ( SendMessage { raw } )
 }
 
+//
+// pub fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Message
+// {
+//     let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
+//     let mut v = vec![
+//         // knx/ip header
+//         // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
+//         0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
+//
+//         0x29, // data indication
+//         0x00, // extra-info
+//         0xbc, //low-prio,
+//         0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+//         0x12, 0x7e  // src: 0x127e -> 1.2.126
+//     ];
+//     v.append( &mut dst );
+//     v.push( 2u8 ); //len
+//     v.push( 0x00 ); // 'TPCI'
+//     v.push( 0x80 );
+//     v.push( percent  );
+//
+//     println!(" helligkeitswert: {:X?}", v);
+//
+//
+//     Message { src: EibAddr(0, 0, 0), dst: EibAddr(0, 0, 0),
+//         measurement: None}
+//     // Message { raw: v }
+// }
+//
 
-pub fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Message
-{
-    let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
-    let mut v = vec![
-        // knx/ip header
-        // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
-
-        0x29, // data indication
-        0x00, // extra-info
-        0xbc, //low-prio,
-        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-        0x12, 0x7e  // src: 0x127e -> 1.2.126
-    ];
-    v.append( &mut dst );
-    v.push( 2u8 ); //len
-    v.push( 0x00 ); // 'TPCI'
-    v.push( 0x80 );
-    v.push( percent  );
-
-    println!(" helligkeitswert: {:X?}", v);
-
-
-    Message { src: EibAddr(0, 0, 0), dst: EibAddr(0, 0, 0),
-        measurement: None}
-    // Message { raw: v }
-}
-
-
-
-// 'full': entspricht wert, der fuer vollstaendiges schliessen gesendet werden muss, z.B. 205
-fn create_knx_frame_rollo(grp: u16, percent: u8, full: u8) -> Message
-{
-    let t = percent as u16 * full as u16 / 100;
-    let tx_raw = if t > 255 { 255 } else { t as u8 };
-    let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
-    let mut v = vec![
-        // knx/ip header
-        // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
-
-        0x29, // data indication (rollo: 0x2e)
-        0x00, // extra-info
-        0xbc, //low-prio,
-        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-        0x12, 0x7e  // src: 0x127e -> 1.2.126
-    ];
-    v.append( &mut dst );
-    v.push( 2u8 ); //len
-    v.push( 0x00 ); // 'TPCI'
-    v.push( 0x80 );
-    v.push( tx_raw  );
-
-    println!(" rollo-wert: {:X?}", v);
-
-
-    Message { src: EibAddr(0, 0, 0), dst: EibAddr(0, 0, 0),
-        measurement: None}
-}
+//
+// // 'full': entspricht wert, der fuer vollstaendiges schliessen gesendet werden muss, z.B. 205
+// fn create_knx_frame_rollo(grp: u16, percent: u8, full: u8) -> Message
+// {
+//     let t = percent as u16 * full as u16 / 100;
+//     let tx_raw = if t > 255 { 255 } else { t as u8 };
+//     let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
+//     let mut v = vec![
+//         // knx/ip header
+//         // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
+//         0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
+//
+//         0x29, // data indication (rollo: 0x2e)
+//         0x00, // extra-info
+//         0xbc, //low-prio,
+//         0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+//         0x12, 0x7e  // src: 0x127e -> 1.2.126
+//     ];
+//     v.append( &mut dst );
+//     v.push( 2u8 ); //len
+//     v.push( 0x00 ); // 'TPCI'
+//     v.push( 0x80 );
+//     v.push( tx_raw  );
+//
+//     println!(" rollo-wert: {:X?}", v);
+//
+//
+//     Message { src: EibAddr(0, 0, 0), dst: EibAddr(0, 0, 0),
+//         measurement: None}
+// }
 
 // slice: &[u8], array: &[u8; 2]
 pub fn convert_16bit_float(high:u8, low:u8) -> f32 {

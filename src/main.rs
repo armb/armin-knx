@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
     h.register_template_file("index", "res/tpl/tpl_index.html").expect("ERROR");
 
     let httpserver = httpserver::HttpServer::create(
-        config.clone(), data.clone());
+        config.clone(), data.clone()).await;
 
     let future_knx =  knx.thread_function();
     // let future_httpserver =  async { () }; //httpserver.thread_function();
