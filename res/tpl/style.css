@@ -1,0 +1,127 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"></head><body>* {
+    font-size: 50px;
+    margin: 0px;
+}
+
+
+body {
+    background-color: #0a0808;
+    color: #505050;
+    padding: 0px 0px;
+}
+
+.img_status {
+    height: 30px;
+}
+
+.etage_box {
+    padding: 10px;
+    margin: 15px;
+    background-color: #0da0a0;
+    border: 1px solid #c0c0c0;
+    border-radius: 0.5em;
+}
+
+.etage {
+    display: block;
+//    margin: 10px;
+}
+
+.room_box {
+    padding: 5px;
+    margin-bottom: 20px;
+    border: 1px solid black;
+    border-radius: 0.25em;
+    background-color: #20c0c0;
+}
+
+.room {
+    display: none;
+    margin: 0px;
+    background-color: #c0c0c0;
+
+    //    border: 2px solid silver;
+    //    font-weight: 100;
+    //    font-size: 3em;
+    //    font-family: Roboto, sans-serif;
+    //    padding: 0px 0px;
+    //    color: green;
+    //    border-color:#ff0000;
+    //    background-color: #a00000;
+}
+
+
+.buttonOn, .buttonOff {
+    font-size: 0.5em;
+    font-weight: bold;
+    display: inline-block;
+    margin: 0px auto;
+    background-color: #202020;
+    color: #d0d0d0;
+    //    border: 0.4em solid #d4f7da;
+    border-radius: 0.5em;
+    transition: all 0.3s;
+    box-sizing: border-box;
+    width: 5em;
+    //  height: 2em;
+    cursor: pointer;
+    box-shadow: 0 0 0 rgba(0,0,0,0.1), inset 0 0 0 rgba(0,0,0,0.1);
+    text-align: center;
+    
+}
+
+
+.summer_button {
+    font-size: 1.5em;
+    font-weight: bold;
+//    display: inline-block;
+    //  margin: 0px auto;
+    background-color: #202020;
+    color: #d0d0d0;
+    //    border: 0.4em solid #d4f7da;
+    border-radius: 0.2em;
+    transition: all 0.3s;
+    box-sizing: border-box;
+//    width: auto;
+    //  height: 2em;
+    cursor: pointer;
+    box-shadow: 0 0 0 rgba(0,0,0,0.1), inset 0 0 0 rgba(0,0,0,0.1);
+    text-align: right;
+}
+
+h2 {
+    font-size: 32px;
+    text-align: left;
+    color: white;
+    margin: 10px 0px 0px 0px;
+}
+
+
+.message_box {
+    color: white;
+    padding: 10px;
+    margin: 15px;
+    background-color: #103030;
+    border: 1px solid #c0c0c0;
+    border-radius: 0.5em;
+}
+
+.etage_box {
+    padding: 10px;
+    margin: 15px;
+    background-color: #0da0a0;
+    border: 1px solid #c0c0c0;
+    border-radius: 0.5em;
+}
+
+
+.summer_box {
+    padding: 10px;
+    margin: 15px;
+    background-color: #0da0a0;
+    border: 1px solid #c0c0c0;
+    border-radius: 0.5em;
+    text-align: center;
+}
+</body></html>
