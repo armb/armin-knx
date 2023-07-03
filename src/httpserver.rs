@@ -99,21 +99,22 @@ impl HttpServer {
         struct TemplateActor { id:  String, name:  String, commands: Vec<String> };
         #[derive(Serialize, Deserialize, Debug, Clone)]
         struct TemplateRoom {
-            name:  String,
-            sensors: Vec<TemplateSensor>,
-            actors: Vec<TemplateActor> };
+            id: String,
+            name: String,
+            actors: Vec<TemplateActor>,
+            sensors: Vec<TemplateSensor>
+        };
 
         let mut template_rooms: Vec<TemplateRoom> = vec![];
         for room_id in &h.config.room_list {
             if ! h.config.rooms.contains_key(room_id) {
                 eprintln!("Details zu Raum {room_id} nicht in Konfiguration gefunden.");
             }
-            let room = h.config.rooms.get(room_id)
+            let config_room = h.config.rooms.get(room_id)
                 .expect("Raum nicht gefunden");
             let mut room_sensors: Vec<TemplateSensor> = vec![];
             for (sensor_id, sensor) in &h.config.sensors {
                 if sensor.room_id.eq(room_id) {
-                    // println!("sensor in {0}: {1}", room.name, sensor_id);
                     let data = h.data.lock().unwrap();
                     let mut template_sensor = TemplateSensor {
                         id: sensor_id.clone(),
@@ -152,12 +153,12 @@ impl HttpServer {
                     room_actors.push(template_actor);
                 }
             }
-            let template_room = TemplateRoom {
-                name: room.name.clone(),
+            let room = TemplateRoom {
+                id: room_id.clone(),
+                name: config_room.name.clone(),
                 sensors: room_sensors,
-                actors: room_actors
-            };
-            template_rooms.push( template_room );
+                actors: room_actors};
+            template_rooms.push( room );
          }
 
         let path = request.uri().path();
@@ -169,13 +170,18 @@ impl HttpServer {
             let static_rel = static_path.strip_prefix('/').unwrap();
             println!("STATIC-rel: '{static_rel}'");
             let mut buf = Vec::new();
+            let content_type = if path.ends_with(".png") {
+                "image/png"
+            } else if path.ends_with(".css") { "text/css"
+            } else if path.ends_with(".js") { "text/javascript"
+            } else { "unknown" };
             return if let Ok(mut file) = File::open(static_rel) {
                 let message = match file.read_to_end(&mut buf) {
                     Ok(len) => {
                         println!("OK: size={len}");
                         let body = Body::from(buf);
                         Response::builder()
-                            .header(header::CONTENT_TYPE, "image/png")
+                            .header(header::CONTENT_TYPE, content_type)
                             .status(hyper::StatusCode::OK)
                             .body(body).unwrap()
                     },

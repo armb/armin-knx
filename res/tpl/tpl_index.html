@@ -2,14 +2,13 @@
 <html>
 <head>
     <link rel="stylesheet" href="static/res/tpl/style.css" />
-    <script type="text/javascript" src="script.js"></script>
+    <script type="text/javascript" src="static/res/script.js"></script>
     <script>
         function trigger_actor(actor_id) {
             let url = ""
             let req = new XMLHttpRequest();
         }
     </script>
-    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 {{title}}
@@ -26,10 +25,11 @@
         </td>
     </tr>
     {{#each rooms as |r|}}
-    <tr>
+    <tr class="room" onclick="myFunction('{{r.id}}')">
         <!-- <td>{{@index}}</td> -->
-        <td onclick="myFunction()">{{r.name}}</td>
-        <td>{{#each r.sensors as |s|}}
+        <td style="vertical-align: top">
+            {{r.name}}
+        <div>{{#each r.sensors as |s|}}
                 <br/>
                 {{#if (eq s.dimension "onoff")}}
                   {{#if (eq s.measurement "0.0")}}<img class="img_status" alt="&#128161;" src="static/res/img/bulb-off-tiny.png" />{{/if}}
@@ -40,9 +40,9 @@
                 {{#if (eq s.dimension "brightness")}}&#128526;{{s.measurement}} lux{{/if}}
 
             {{/each}}
-        </td>
-        <td class="room_box">
-            <form target="result" style="display:none;">
+        </div>
+        <div class="room_actors" id="room_actors.{{r.id}}">
+            <form target="result">
             {{#each r.actors as |a|}}
                 <div style="border: 1px solid white; width: 5em">{{a.name}}:</div>
                 <div>
@@ -60,6 +60,7 @@
                 </div>
             {{/each}}
             </form>
+            </div>
         </td>
     </tr>
     {{/each}}

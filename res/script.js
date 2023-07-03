@@ -1,7 +1,7 @@
-function myFunction(arg0) {
-    const e = document.activeElement.parentElement;
-    postMessage("Test: " + e);
+function myFunction(room_id) {
+    toggleVisibility("room_actors." + room_id)
 }
+
 
 function toggleVisibility(id) {
     const e = document.getElementById(id);

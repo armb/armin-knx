@@ -81,13 +81,13 @@
     "actor-eg.wohn.lampe": {
       "name": "Lampe",
       "room_id": "eg.wohnen",
-      "commands": ["dim-0", "dim-50", "dim-100"],
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
       "eibaddr": "0/2/2"
     },
     "actor-eg.wohn.spots": {
       "name": "Spots",
       "room_id": "eg.wohnen",
-      "commands": ["dim-0", "dim-25", "dim-50", "dim-100"],
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
       "eibaddr": "0/2/1"
     },
     "actor-eg.bathroom.lamp": {
