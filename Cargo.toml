@@ -6,6 +6,7 @@ edition = "2021"
 
 
 [dependencies]
+scanf = "1.2.1"
 hyper = { version = "0.13.4" }
 tokio = { version = "0.2.25", features = ["full"] }
 regex = "1.6.0"

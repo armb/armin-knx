@@ -1,38 +1,71 @@
+<!DOCTYPE html>
 <html>
+<head>
+    <link rel="stylesheet" href="static/res/tpl/style.css" />
+    <script type="text/javascript" src="script.js"></script>
+    <script>
+        function trigger_actor(actor_id) {
+            let url = ""
+            let req = new XMLHttpRequest();
+        }
+    </script>
+    <link rel="stylesheet" href="style.css" />
+</head>
 <body>
 {{title}}
 <table border="1em">
-    <tr>
-        <th>---</th>
-    </tr>
-    <tr>
+    <!-- tr>
         <th></th>
         <th><b>Name</b></th>
+    </tr -->
+    <tr>
+        <td colspan="3" style="text-align: center">
+            <form target="result">
+                <button class="summer_button" type="submit" formaction="aactor/actor-summer/on">Summer</button>
+            </form>
+        </td>
     </tr>
     {{#each rooms as |r|}}
     <tr>
-        <td>{{@index}}</td>
-        <td>{{r.name}}</td>
+        <!-- <td>{{@index}}</td> -->
+        <td onclick="myFunction()">{{r.name}}</td>
         <td>{{#each r.sensors as |s|}}
-                {{s.measurement}}<br/>
+                <br/>
+                {{#if (eq s.dimension "onoff")}}
+                  {{#if (eq s.measurement "0.0")}}<img class="img_status" alt="&#128161;" src="static/res/img/bulb-off-tiny.png" />{{/if}}
+                  {{#if (eq s.measurement "1.0")}}<img class="img_status" alt="&#128161;" src="static/res/img/bulb-on-tiny.png" />{{/if}}
+                  {{s.measurement}}
+                {{/if}}
+                {{#if (eq s.dimension "temperature")}}&#127777;{{s.measurement}} &deg;C{{/if}}
+                {{#if (eq s.dimension "brightness")}}&#128526;{{s.measurement}} lux{{/if}}
+
             {{/each}}
         </td>
-        <td>{{#each r.actors as |a|}}
-            {{a.name}}
+        <td class="room_box">
+            <form target="result" style="display:none;">
+            {{#each r.actors as |a|}}
+                <div style="border: 1px solid white; width: 5em">{{a.name}}:</div>
+                <div>
+                <!-- actor {{a.id}}: commands={{a.commands}} -->
                 {{#each a.commands as |c|}}
-                    {{#if (eq c "on")}}
-                        <button type="button">AN</button>{{/if}}
-                    {{#if (eq c "dim50")}}
-                        <button type="button">50%</button>{{/if}}
-                    {{#if (eq c "off")}}
-                        <button type="button">AUS</button>{{/if}}
-                {{/each}}<br/>
+                    <!-- command {{c}} -->
+                    {{#if (eq c "dim-0")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">aus</button>{{/if}}
+                    {{#if (eq c "dim-10")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">10%</button>{{/if}}
+                    {{#if (eq c "dim-25")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">25%</button>{{/if}}
+                    {{#if (eq c "dim-50")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">50%</button>{{/if}}
+                    {{#if (eq c "dim-100")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">an</button>{{/if}}
+                    {{#if (eq c "on")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">an</button>{{/if}}
+                    {{#if (eq c "off")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">aus</button>{{/if}}
+                {{/each}}
+                </div>
             {{/each}}
+            </form>
         </td>
     </tr>
     {{/each}}
-
 </table>
+
+<iframe class="message_box" name="result"></iframe>
 
 </body>
 </html>

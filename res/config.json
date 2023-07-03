@@ -1,11 +1,11 @@
 {
   "http_listen_address": "0.0.0.0:8081",
-  "knx_server":null,
+  "knx_server": "224.0.23.12:3671",
   "knx_multicast_group": "224.0.23.12",
-  "knx_multicast_interface": "127.0.0.1",
+  "knx_multicast_interface": "192.168.0.195",
   "knx_multicast_port": 3671,
 
-  "room_list": [ "eg.wohnen", "eg.hobby", "og.till" ],
+  "room_list": [ "eg.wohnen", "eg.hobby","eg.flur", "eg.bathroom", "og.till", "og.bedroom", "og.bad", "keller" ],
   "rooms": {
     "eg.wohnen": {
       "name": "EG Wohnzimmer"
@@ -13,13 +13,16 @@
     "eg.hobby": {
       "name": "EG Hobby"
     },
-    "eg.floor": {
+    "eg.flur": {
       "name": "EG Flur"
     },
-    "og.schlafzimmer": {
+    "og.bedroom": {
       "name": "Schlafzimmer"
     },
-    "1st.bathroom": {
+    "keller": {
+      "name": "Keller"
+    },
+    "og.bad": {
       "name": "Badezimmer"
     },
     "og.till": {
@@ -39,39 +42,133 @@
     }
   },
   "actors": {
-    "act-eg.wohnen.spots": {
-      "name": "Spots",
-      "room_id": "eg.wohnen",
-      "commands": [ "on", "off", "dim50" ]
-    },
-    "act-eg.kitchen.sockets": {
+    "actor-eg.kitchen.sockets": {
       "name": "Dosen",
       "room_id": "eg.kitchen",
-      "commands": [ "on", "off" ]
+      "commands": ["off","on"],
+      "eibaddr": "0/2/6"
     },
-    "act-eg.kitchen.spots": {
+    "actor-eg.hobby.shutter": {
+      "name": "Rolladen",
+      "room_id": "eg.hobby",
+      "commands": ["shutter-close"],
+      "eibaddr": "0/0/22"
+    },
+    "actor-eg.hobby.spots": {
       "name": "Spots",
-      "room_id": "eg.kitchen",
-      "commands": [ "on", "off" ]
+      "room_id": "eg.hobby",
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "eibaddr": "0/2/3"
     },
-    "act-og.bedroom.spots": {
+    "actor-eg.hobby.lampe": {
+      "name": "Lampe",
+      "room_id": "eg.hobby",
+      "commands": ["on", "off"],
+      "eibaddr": "0/4/2"
+    },
+    "actor-og.till.lampe1": {
+      "name": "Lampe 1",
+      "room_id": "og.till",
+      "commands": ["on", "off"],
+      "eibaddr": "0/4/1"
+    },
+    "actor-og.till.lampe2": {
+      "name": "Lampe 2",
+      "room_id": "og.till",
+      "commands": ["on", "off"],
+      "eibaddr": "0/4/4"
+    },
+    "actor-eg.wohn.lampe": {
+      "name": "Lampe",
+      "room_id": "eg.wohnen",
+      "commands": ["dim-0", "dim-50", "dim-100"],
+      "eibaddr": "0/2/2"
+    },
+    "actor-eg.wohn.spots": {
+      "name": "Spots",
+      "room_id": "eg.wohnen",
+      "commands": ["dim-0", "dim-25", "dim-50", "dim-100"],
+      "eibaddr": "0/2/1"
+    },
+    "actor-eg.bathroom.lamp": {
+      "name": "Lampe",
+      "room_id": "eg.bathroom",
+      "commands": ["on", "off"],
+      "eibaddr": "0/4/0"
+    },
+    "actor-eg.wohn.dosen": {
+      "name": "Dosen",
+      "room_id": "eg.wohnen",
+      "commands": ["on", "off"],
+      "eibaddr": "0/5/8"
+    },
+    "actor-og.bedroom.spots": {
       "name": "Spots",
       "room_id": "og.bedroom",
-      "commands": [ "on", "off", "dim" ]
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "eibaddr": "0/2/23"
+    },
+    "actor-og.bedroom.dosen": {
+      "name": "Dosen",
+      "room_id": "og.bedroom",
+      "commands": ["on", "off"],
+      "eibaddr": "0/1/4"
+    },
+    "actor-garten-on": {
+      "name": "Garten",
+      "room_id": "keller",
+      "commands": ["on", "off"],
+      "eibaddr": "0/1/9"
+    },
+    "actor-summer": {
+      "name": "Summer",
+      "room_id": "keller",
+      "commands": ["on"],
+      "eibaddr": "0/6/2"
     }
   },
   "sensors": {
-    "sensor-eg.floor.brightness": {
+    "sensor-eg.bathroom.brightness": {
       "dimension": "brightness",
-      "room_id": "eg.floor",
-      "name": "eg.floor:helligkeit",
-      "eibaddr": "1/2/2"
+      "room_id": "eg.bathroom",
+      "name": "Helligkeit",
+      "eibaddr": "0/3/3"
+    },
+    "sensor-og.bad.brightness": {
+      "dimension": "brightness",
+      "room_id": "og.bad",
+      "name": "Helligkeit",
+      "eibaddr": "0/3/6"
+    },
+    "sensor-eg.flur.brightness": {
+      "dimension": "brightness",
+      "room_id": "eg.flur",
+      "name": "Helligkeit",
+      "eibaddr": "0/3/1"
     },
     "sensor-og.till.temp": {
       "dimension": "temperature",
       "room_id": "og.till",
-      "name": "Schlafzimmer",
-      "eibaddr": "1/2/4"
+      "name": "Temperatur",
+      "eibaddr": "0/3/4"
+    },
+    "sensor-og.till.lampe1.status": {
+      "dimension": "onoff",
+      "room_id": "og.till",
+      "name": "Licht 1",
+      "eibaddr": "0/4/5"
+    },
+    "sensor-eg.hobby.lampe.status": {
+      "dimension": "onoff",
+      "room_id": "eg.hobby",
+      "name": "Lampe",
+      "eibaddr": "0/4/3"
+    },
+    "sensor-og.till.lampe2.status": {
+      "dimension": "onoff",
+      "room_id": "og.till",
+      "name": "Licht 2",
+      "eibaddr": "0/4/6"
     }
   }
 }

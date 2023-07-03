@@ -44,16 +44,22 @@ async fn main() -> Result<()> {
     let mut h = handlebars::Handlebars::new();
     h.register_template_file("index", "res/tpl/tpl_index.html").expect("ERROR");
 
-    let httpserver = httpserver::HttpServer::create(
-        config.clone(), data.clone()).await;
+
 
     let future_knx =  knx.thread_function();
     // let future_httpserver =  async { () }; //httpserver.thread_function();
-    let future_httpserver = unsafe { HttpServer::thread_function() };
+    let future_httpserver = || async {
+        unsafe {
+            httpserver::HttpServer::create(
+            config.clone(), data.clone()).await;
+            // let mut a = httpserver.lock().unwrap();
+            httpserver::HttpServer::thread_function().await.expect("TODO: panic message");
+        };
+    };
 
     //tokio::join!(future_knx, future_httpserver);
 
-    let (_first, _second) = tokio::join!(future_httpserver, future_knx);
+    let (_first, _second) = tokio::join!(future_httpserver(), future_knx);
 
     // tokio::join!(future_knx);
 

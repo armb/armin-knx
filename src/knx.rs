@@ -1,8 +1,10 @@
 use std::borrow::Borrow;
 use std::error::Error;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr};
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use regex;
+use scanf::sscanf;
 use tokio::io;
 use crate::config::{Config, EibAddr, Sensor};
 use crate::data::{Dimension, Measurement, Unit};
@@ -60,35 +62,51 @@ pub struct SendMessage {
 
 #[derive(Debug)]
 pub struct KnxSocket {
-    udp: UdpSocket,
+    udp: std::net::UdpSocket,
 }
+
 
 impl KnxSocket {
     // do not bind to local address
-    pub async fn create() -> tokio::io::Result<KnxSocket> {
-        let udp = UdpSocket::bind( ("127.0.0.1", 8090)  ).await?;
+    pub fn create() -> io::Result<KnxSocket> {
+        let udp = std::net::UdpSocket::bind( ("0.0.0.0", 8090)  )?;
         Ok ( KnxSocket{ udp } )
     }
-    pub async fn bind(local_address: &String, local_port: u16) -> tokio::io::Result<KnxSocket> {
-        let udp = UdpSocket::bind( (local_address.as_str(), local_port)).await?;
+    pub fn bind(local_address: &String, local_port: u16) -> io::Result<KnxSocket> {
+        let udp = std::net::UdpSocket::bind( (local_address.as_str(), local_port))?;
         Ok ( KnxSocket{ udp } )
     }
-    pub async fn join(&mut self, multicast_group: String, multicast_interface: String) -> io::Result<()> {
-        self.udp
-            .join_multicast_v4(multicast_group.parse().unwrap(), multicast_interface.parse().unwrap())?;
-        Ok( () )
+    pub fn join(&mut self, multicast_group: String, multicast_interface: String) -> io::Result<()> {
+        let group = Ipv4Addr::from_str(&*multicast_group)
+            .expect("should be valid multicast-group string");
+        let interface = Ipv4Addr::from_str(&*multicast_interface)
+            .expect("should be valid interface-address string");
+        self.udp.join_multicast_v4(&group, &interface)
     }
-    pub async fn send(&mut self, grp: u16, command: &Command) {
+    pub fn connect(&mut self, address: &String) -> io::Result<()> {
+        self.udp.connect(address)
+    }
+
+    pub fn send(&mut self, group_string: &String, command: &Command) -> Result<(), String> {
+        let addr = parse_addr(group_string.as_str()).expect("group string invalid");
+        let a = (addr.0 as u16) << 12;
+        let b = (addr.1 as u16) << 8;
+        let c = (addr.2 as u16) ;
+        let grp: u16 = a | b | c;
+
+        println!("SEND: {group_string} -> {addr:?} -> {grp}");
+
         let msg = match command {
-            //Command::Dimmer(x) => create_knx_frame_dimmer(grp, x),
-            Command::Switch(x) => create_knx_frame_onoff(grp, *x),
+            Command::Dimmer(x) => create_knx_frame_dimmer(grp, x.clone()),
+            Command::Switch(x) => create_knx_frame_onoff(grp, x.clone()),
             //Command::UpDownTarget(x,max) => create_knx_frame_rollo(grp, x, max),
             _ => Err( () )
-        };
+        }.expect("knx frame not defined for command");
 
-        let msg = msg.expect("could not create knx frame for command {command:?}");
+        self.udp.send(msg.raw.as_slice())
+            .expect("send() failed");
 
-        self.udp.send(msg.raw.as_slice()).await.expect("send() failed");
+        Ok( () )
     }
 }
 
@@ -102,13 +120,27 @@ impl Message {
 
         match raw.len() {
             19 => {
-                let value = convert_16bit_float(raw[17], raw[18]);
-               //  println!("Value (raw[17]|raw[18]): {}", val);
-                let m = Measurement { dimension: Dimension::Brightness, unit: Unit::One, value: Some(value) };
+                //let value = convert_16bit_float(raw[17], raw[18]);
+                // mantissa: 11 bits (1/100).
+                let m: i32 = ((0x07 & raw[17] as i32) << 8) + raw[18] as i32;
+                let e: i32 = (raw[17] >> 3  & 0x0f) as i32;
+                let is_negative = raw[17] & 0x70 == 0x70;
+                // val = m * 2^e
+                let val = if is_negative {
+                    -0.01 * (m << e) as f32
+                } else {
+                    0.01 * (m << e) as f32
+                };
+
+                println!("Value (raw[17]|raw[18]): negative={is_negative}, e={e}, m={m} --> {}", val);
+                let m = Measurement { dimension: Dimension::Brightness, unit: Unit::One, value: Some(val) };
                 measurement = Some(m);
             },
             17 => {
+                let onoff = if raw[16] == 0x80 { 0.0 } else { 1.0 };
+                let m = Measurement { dimension: Dimension::OnOff, unit: Unit::One, value: Some(onoff)};
                 println!("len=17: on/off value?");
+                measurement = Some(m)
             },
             len => {
                 println!("len={}: ???", len);
@@ -151,8 +183,6 @@ impl Knx {
             let filled_buf = &mut buf[..number_of_bytes];
             println!(
                 "message {:02X?}", &filled_buf);
-            for a in 0..number_of_bytes {
-                print!("{:2}  ", a); };
 
             match filled_buf.len() {
                 x if x < 16 => {
@@ -167,17 +197,18 @@ impl Knx {
             };
 
             let msg = Message::from_raw(filled_buf);
-            let a = self.get_sensor_from(&msg.src);
-            if a.is_some() {
-                let (id, sensor) = a.unwrap();
+            if let Some( (id, sensor) )
+                    = self.get_sensor_from(&msg.dst) {
                 println!("message from sensor {id}");
-                let mut data = self.data.lock().unwrap();
-                match data.get_mut(id) {
-                    Some(mut m) => m.value = msg.measurement.expect("no measurement in frame").value,
-                    None => eprintln!("sensor not known in data struct?")
+                if let Some(measurement) = msg.measurement {
+                    let mut data = self.data.lock().unwrap();
+                    match data.get_mut(id) {
+                        Some(mut m) => m.value = measurement.value,
+                        None => eprintln!("sensor not known in data struct?")
+                    };
                 }
             } else {
-                eprintln!("No sensor known with eib addr {:?}", &msg.src);
+                eprintln!("No handler for message to group-address {:?} (from {:?})", &msg.dst, &msg.src);
             }
 
             println!("knx-message from {:?}: measurement={:?}", msg.src, msg.measurement);
@@ -220,35 +251,33 @@ pub fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Result<SendMessage, ()> 
     Ok ( SendMessage { raw } )
 }
 
-//
-// pub fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Message
-// {
-//     let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
-//     let mut v = vec![
-//         // knx/ip header
-//         // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
-//         0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
-//
-//         0x29, // data indication
-//         0x00, // extra-info
-//         0xbc, //low-prio,
-//         0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
-//         0x12, 0x7e  // src: 0x127e -> 1.2.126
-//     ];
-//     v.append( &mut dst );
-//     v.push( 2u8 ); //len
-//     v.push( 0x00 ); // 'TPCI'
-//     v.push( 0x80 );
-//     v.push( percent  );
-//
-//     println!(" helligkeitswert: {:X?}", v);
-//
-//
-//     Message { src: EibAddr(0, 0, 0), dst: EibAddr(0, 0, 0),
-//         measurement: None}
-//     // Message { raw: v }
-// }
-//
+
+pub fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Result<SendMessage, ()>
+{
+    let mut dst = vec![ (grp >> 8) as u8, (grp & 0xff) as u8 ];
+    let mut v = vec![
+        // knx/ip header
+        // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(0x00, 0x11)
+        0x06u8, 0x10, 0x05, 0x30, 0x00, 0x12,
+
+        0x29, // data indication
+        0x00, // extra-info
+        0xbc, //low-prio,
+        0xe0, // to-group-address (1 << 7) | hop-count-6 (6 << 5) | extended-frame-format (0x0)
+        0x12, 0x7e  // src: 0x127e -> 1.2.126
+    ];
+    let percent_byte = percent as u16 * 255 / 100;
+    v.append( &mut dst );
+    v.push( 2u8 ); //len
+    v.push( 0x00 ); // 'TPCI'
+    v.push( 0x80 );
+    v.push(percent_byte as u8);
+
+    println!(" helligkeitswert: {:X?}", v);
+
+    Ok( SendMessage { raw: v } )
+}
+
 
 //
 // // 'full': entspricht wert, der fuer vollstaendiges schliessen gesendet werden muss, z.B. 205
@@ -287,10 +316,10 @@ pub fn convert_16bit_float(high:u8, low:u8) -> f32 {
     let mantissa = ((high & 0x07) as u16 * 256) + low as u16;
     let negative = high & 0x80 == 0x80;
     let exponent = match (high & 0x70) { 0 => 1, other => other as i32 };
-    println!("{} {mantissa} .powi ( {exponent} )", (if negative { "-" } else { "" } ));
+    println!("negative={negative}, mantissa={mantissa}, exponent={exponent}");
 
     let mut out = (mantissa as f32).powi(exponent);
     if negative { out *= -1f32 };
     println!("--> {:02X}:{:02X} = {}", high, low, out);
-    out * 0.01 // resolution: 0.01
+    out * 0.02 // resolution: 0.01
 }

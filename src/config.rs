@@ -23,10 +23,11 @@ pub struct Room {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Actor {
+pub struct actor {
     pub name: String,
     pub room_id: String,
     pub commands: Vec<String>,
+    pub eibaddr: String
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -62,7 +63,7 @@ pub struct Config {
     pub room_list: Vec<String>,
     pub rooms: HashMap<String, Room>,
     pub sensors: HashMap<String, Sensor>,
-    pub actors: HashMap<String, Actor>,
+    pub actors: HashMap<String, actor>,
 }
 
 
@@ -104,6 +105,9 @@ impl Config {
         }
         for (id, sensor) in &self.sensors {
             println!("sensor '{id}': {sensor:?}");
+        }
+        for (id, actor) in &self.actors {
+            println!("actor '{id}': {actor:?}-")
         }
     }
 }
