@@ -19,11 +19,11 @@ body {
     background-color: #20c0c0;
 }
 
-
 .room {
     width: 300pt;
     margin: 5pt;
     display: block;
+    border: none;
     /*margin-bottom: 20pt;*/
     font-weight: bold;
     /*border: 1px solid black;*/
@@ -101,4 +101,3 @@ h2 {
     border-radius: 0.5em;
     text-align: center;
 }
-</body></html>

@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
 
     config.print();
 
-    let mut data = Arc::new(Mutex::new(data::Data::new()));
+    let data = Arc::new(Mutex::new(data::Data::new()));
     {
         let mut data = data.lock().unwrap();
         for (id, sensor) in &config.sensors {

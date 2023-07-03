@@ -142,6 +142,12 @@ impl Message {
                 println!("len=17: on/off value?");
                 measurement = Some(m)
             },
+            18 => {
+                let percent = raw[17];
+                println!("len=18, percent={percent}");
+                let m = Measurement{ dimension: Dimension::Percent, unit: Unit::One, value: Some(percent as f32) };
+                measurement = Some(m)
+            }
             len => {
                 println!("len={}: ???", len);
             }

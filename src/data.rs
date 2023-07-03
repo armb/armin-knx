@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use crate::config::Sensor;
-use crate::data::Dimension::{Brightness, Power, Temperature};
+use crate::data::Dimension::{Brightness, Temperature};
 use crate::data::Unit::Watts;
 
 
@@ -18,7 +18,7 @@ pub enum Dimension {
     None,
     Temperature,
     Brightness,
-    Power,
+    Percent,
     OnOff,
 }
 

@@ -2,14 +2,14 @@
 name = "armin-knx"
 version = "0.1.0"
 authors = ["Armin <armin@arbu.eu>"]
-edition = "2021"
+edition = "2018"
 
 
 [dependencies]
 scanf = "1.2.1"
 hyper = { version = "0.13.4" }
 tokio = { version = "0.2.25", features = ["full"] }
-regex = "1.6.0"
+regex = "1.2"
 serde_json = "1.0"
-serde = { version = "1.0.145", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 handlebars = "4.3"

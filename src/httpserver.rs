@@ -44,7 +44,7 @@ pub struct HttpServer {
     knx: KnxSocket
 }
 
-static mut instance: Option<Arc<Mutex<HttpServer>>> = None;
+static mut INSTANCE: Option<Arc<Mutex<HttpServer>>> = None;
 
 enum actor { NONE, ON, OFF, DIMMER { percent: u8 } }
 
@@ -60,7 +60,7 @@ impl HttpServer {
         //httpserver = Some(Arc<Mutex<HttpServer>>)
         let s = Arc::new(Mutex::new( HttpServer { config, data, knx } ) );
         unsafe {
-            instance = Some(s.clone())
+            INSTANCE = Some(s.clone())
         };
         //httpserver = Some(s.clone());
         s
@@ -91,12 +91,12 @@ impl HttpServer {
 
         println!("--- REQUEST: {request:?}");
 
-        let binding = instance.clone().unwrap();
+        let binding = INSTANCE.clone().unwrap();
         let mut h = binding.lock().unwrap();
         #[derive(Serialize, Deserialize, Debug, Clone)]
         struct TemplateSensor { id: String, dimension: String, name:  String, measurement:  String };
         #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateActor { id:  String, name:  String, commands: Vec<String> };
+        struct TemplateActor { id:  String, name:  String, status: String, commands: Vec<String> };
         #[derive(Serialize, Deserialize, Debug, Clone)]
         struct TemplateRoom {
             id: String,
@@ -148,6 +148,7 @@ impl HttpServer {
                     let template_actor = TemplateActor {
                         id: actor_id.clone(),
                         name: actor.name.clone(),
+                        status: "".to_string(),
                         commands: actor.commands.clone()
                     };
                     room_actors.push(template_actor);
@@ -237,7 +238,7 @@ impl HttpServer {
                 handlebars.register_template_file("style", "res/tpl/style.css")
                     .expect("should register style template file");
                 //     .expect("Could not register template file for 'style'");
-                let mut template_values = Map::< String, Json>::new();
+                let template_values = Map::< String, Json>::new();
                 //
                 // template_values.insert("rooms".to_string(), json!(template_rooms));
                 let content = handlebars.render("style", &template_values).unwrap();
@@ -285,7 +286,7 @@ impl HttpServer {
     pub async unsafe fn thread_function() -> Result<(), Error> {
 
         //let c = httpserver.lock().expect("httpserver");
-        let addr_str = instance.clone().unwrap().lock().unwrap().config.http_listen_address.clone();
+        let addr_str = INSTANCE.clone().unwrap().lock().unwrap().config.http_listen_address.clone();
         let addr = SocketAddr::from_str(&addr_str).expect("could not parse {addr_str} as SocketAddrV4");
         println!("httpserver-address: {addr:?}");
 
@@ -298,7 +299,7 @@ impl HttpServer {
             let service= service_fn(|request: Request<Body>| async move {
                 Ok::<_, Infallible>({
                     //println!("service_fn: A");
-                    //let mut h = instance.unwrap().clone().lock().unwrap();
+                    //let mut h = INSTANCE.unwrap().clone().lock().unwrap();
                     //println!("service_fn: C");
                     let response = HttpServer::create_response(request);
                     //println!("service_fn: D");

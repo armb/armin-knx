@@ -20,31 +20,29 @@
     <tr>
         <td colspan="3" style="text-align: center">
             <form target="result">
-                <button class="summer_button" type="submit" formaction="aactor/actor-summer/on">Summer</button>
+                <button class="summer_button" type="submit" formaction="actor/actor-summer/on">Summer</button>
             </form>
         </td>
     </tr>
     {{#each rooms as |r|}}
-    <tr class="room" onclick="myFunction('{{r.id}}')">
-        <!-- <td>{{@index}}</td> -->
-        <td style="vertical-align: top">
+    <tr class="room" style="border: 0pt;" onclick="myFunction('{{r.id}}')">
+        <td style="border: none; vertical-align: top">
             {{r.name}}
-        <div>{{#each r.sensors as |s|}}
-                <br/>
+        <div class="room_sensors" style="font-size: medium; border: none;">{{#each r.sensors as |s|}}
+<!--                <br/>-->
+            {{s.name}}:
                 {{#if (eq s.dimension "onoff")}}
                   {{#if (eq s.measurement "0.0")}}<img class="img_status" alt="&#128161;" src="static/res/img/bulb-off-tiny.png" />{{/if}}
                   {{#if (eq s.measurement "1.0")}}<img class="img_status" alt="&#128161;" src="static/res/img/bulb-on-tiny.png" />{{/if}}
-                  {{s.measurement}}
                 {{/if}}
                 {{#if (eq s.dimension "temperature")}}&#127777;{{s.measurement}} &deg;C{{/if}}
                 {{#if (eq s.dimension "brightness")}}&#128526;{{s.measurement}} lux{{/if}}
-
             {{/each}}
         </div>
-        <div class="room_actors" id="room_actors.{{r.id}}">
+        <div style="border: 0pt;" class="room_actors" id="room_actors.{{r.id}}">
             <form target="result">
             {{#each r.actors as |a|}}
-                <div style="border: 1px solid white; width: 5em">{{a.name}}:</div>
+                <div style="border: 1px solid white; width: 5em">{{a.name}}: {{a.status}}</div>
                 <div>
                 <!-- actor {{a.id}}: commands={{a.commands}} -->
                 {{#each a.commands as |c|}}

@@ -164,6 +164,12 @@
       "name": "Lampe",
       "eibaddr": "0/4/3"
     },
+    "sensor-eg.wohn.spots.status": {
+      "dimension": "dimmer",
+      "room_id": "eg.wohn",
+      "name": "Lampe",
+      "eibaddr": "0/2/27"
+    },
     "sensor-og.till.lampe2.status": {
       "dimension": "onoff",
       "room_id": "og.till",

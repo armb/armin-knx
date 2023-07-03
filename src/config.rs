@@ -44,6 +44,7 @@ impl Sensor {
             "brightness" => Dimension::Brightness,
             "temperature" => Dimension::Temperature,
             "onoff" => Dimension::OnOff,
+            "percent" => Dimension::Percent,
             _ => Dimension::None
         }
     }
