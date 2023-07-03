@@ -143,7 +143,7 @@ impl Message {
                 measurement = Some(m)
             },
             18 => {
-                let percent = raw[17];
+                let percent = raw[17] as f32 * 100. / 255.;
                 println!("len=18, percent={percent}");
                 let m = Measurement{ dimension: Dimension::Percent, unit: Unit::One, value: Some(percent as f32) };
                 measurement = Some(m)

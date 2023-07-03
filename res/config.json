@@ -164,11 +164,11 @@
       "name": "Lampe",
       "eibaddr": "0/4/3"
     },
-    "sensor-eg.wohn.spots.status": {
-      "dimension": "dimmer",
-      "room_id": "eg.wohn",
-      "name": "Lampe",
-      "eibaddr": "0/2/27"
+    "sensor-eg.hobby.spots.status": {
+      "dimension": "percent",
+      "room_id": "eg.hobby",
+      "name": "Dimmer",
+      "eibaddr": "0/2/30"
     },
     "sensor-og.till.lampe2.status": {
       "dimension": "onoff",

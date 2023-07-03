@@ -29,13 +29,14 @@
         <td style="border: none; vertical-align: top">
             {{r.name}}
         <div class="room_sensors" style="font-size: medium; border: none;">{{#each r.sensors as |s|}}
-<!--                <br/>-->
+                <br/>
             {{s.name}}:
                 {{#if (eq s.dimension "onoff")}}
                   {{#if (eq s.measurement "0.0")}}<img class="img_status" alt="&#128161;" src="static/res/img/bulb-off-tiny.png" />{{/if}}
                   {{#if (eq s.measurement "1.0")}}<img class="img_status" alt="&#128161;" src="static/res/img/bulb-on-tiny.png" />{{/if}}
                 {{/if}}
                 {{#if (eq s.dimension "temperature")}}&#127777;{{s.measurement}} &deg;C{{/if}}
+                {{#if (eq s.dimension "percent")}}{{s.measurement}}%{{/if}}
                 {{#if (eq s.dimension "brightness")}}&#128526;{{s.measurement}} lux{{/if}}
             {{/each}}
         </div>
