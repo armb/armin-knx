@@ -102,6 +102,12 @@
       "commands": ["on", "off"],
       "eibaddr": "0/5/8"
     },
+    "actor-og.till.dosen": {
+      "name": "Dosen",
+      "room_id": "og.till",
+      "commands": ["on", "off"],
+      "eibaddr": "0/5/5"
+    },
     "actor-og.bedroom.spots": {
       "name": "Spots",
       "room_id": "og.bedroom",
@@ -157,6 +163,12 @@
       "room_id": "og.till",
       "name": "Licht 1",
       "eibaddr": "0/4/5"
+    },
+    "sensor-og.till.dosen.status": {
+      "dimension": "onoff",
+      "room_id": "og.till",
+      "name": "Dosen",
+      "eibaddr": "0/5/11"
     },
     "sensor-eg.hobby.lampe.status": {
       "dimension": "onoff",
