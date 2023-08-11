@@ -216,6 +216,11 @@ impl HttpServer {
                 "dim-25" => Command::Dimmer(25),
                 "dim-50" => Command::Dimmer(50),
                 "dim-100" => Command::Dimmer(100),
+                "shutter-0" => Command::Shutter(1),
+                "shutter-50" => Command::Shutter(50),
+                "shutter-90" => Command::Shutter(90),
+                "shutter-170" => Command::Shutter(170),
+                "shutter-200" => Command::Shutter(200),
                 _ => {
                     return Self::create_response_error(
                         &request,

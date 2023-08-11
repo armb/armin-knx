@@ -12,39 +12,30 @@
 </head>
 <body>
 {{title}}
-<table border="1em">
-    <!-- tr>
-        <th></th>
-        <th><b>Name</b></th>
-    </tr -->
-    <tr>
-        <td colspan="3" style="text-align: center">
-            <form target="result">
-                <button class="summer_button" type="submit" formaction="actor/actor-summer/on">Summer</button>
-            </form>
-        </td>
-    </tr>
+    <div class="room">
+        <form target="result" style="text-align: center">
+            <button class="summer_button" type="submit" formaction="actor/actor-summer/on">Summer</button>
+        </form>
+    </div>
     {{#each rooms as |r|}}
-    <tr class="room" style="border: 0pt;" onclick="myFunction('{{r.id}}')">
-        <td style="border: none; vertical-align: top">
-            {{r.name}}
+    <div class="room" style="border: 0pt;" onclick="myFunction('{{r.id}}')">
+        {{r.name}}
         <div class="room_sensors" style="font-size: medium; border: none;">{{#each r.sensors as |s|}}
                 <br/>
-            {{s.name}}:
+           {{s.name}}:
                 {{#if (eq s.dimension "onoff")}}
-                  {{#if (eq s.measurement "0.0")}}<img class="img_status" alt="&#128161;" src="static/res/img/bulb-off-tiny.png" />{{/if}}
-                  {{#if (eq s.measurement "1.0")}}<img class="img_status" alt="&#128161;" src="static/res/img/bulb-on-tiny.png" />{{/if}}
+                  {{#if (eq s.measurement "0.0")}}aus<!--img class="img_status" alt="&#128161;" src="static/res/img/bulb-off-tiny.png" /-->{{/if}}
+                  {{#if (eq s.measurement "1.0")}}an<!--img class="img_status" alt="&#128161;" src="static/res/img/bulb-on-tiny.png" /-->{{/if}}
                 {{/if}}
                 {{#if (eq s.dimension "temperature")}}&#127777;{{s.measurement}} &deg;C{{/if}}
                 {{#if (eq s.dimension "percent")}}{{s.measurement}}%{{/if}}
                 {{#if (eq s.dimension "brightness")}}&#128526;{{s.measurement}} lux{{/if}}
             {{/each}}
         </div>
-        <div style="border: 0pt;" class="room_actors" id="room_actors.{{r.id}}">
+        <div class="room_actors" id="room_actors.{{r.id}}">
             <form target="result">
             {{#each r.actors as |a|}}
-                <div style="border: 1px solid white; width: 5em">{{a.name}}: {{a.status}}</div>
-                <div>
+                <div class="actor_label">{{a.name}}:</div>{{a.status}}
                 <!-- actor {{a.id}}: commands={{a.commands}} -->
                 {{#each a.commands as |c|}}
                     <!-- command {{c}} -->
@@ -53,17 +44,18 @@
                     {{#if (eq c "dim-25")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">25%</button>{{/if}}
                     {{#if (eq c "dim-50")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">50%</button>{{/if}}
                     {{#if (eq c "dim-100")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">an</button>{{/if}}
+                    {{#if (eq c "shutter-0")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">auf</button>{{/if}}
+                    {{#if (eq c "shutter-50")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">halb</button>{{/if}}
+                    {{#if (eq c "shutter-180")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">180</button>{{/if}}
+                    {{#if (eq c "shutter-200")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">200</button>{{/if}}
                     {{#if (eq c "on")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">an</button>{{/if}}
                     {{#if (eq c "off")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">aus</button>{{/if}}
-                {{/each}}
-                </div>
+                {{/each}}<br/>
             {{/each}}
             </form>
-            </div>
-        </td>
-    </tr>
+        </div>
+    </div>
     {{/each}}
-</table>
 
 <iframe class="message_box" name="result"></iframe>
 

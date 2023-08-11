@@ -2,7 +2,8 @@ body {
     background-color: #0a0808;
     color: #505050;
     padding: 0px 0px;
-    font-size: xx-large;
+    font-size: 5.0vw;
+//    horiz-align: center;
 }
 
 .img_status {
@@ -15,32 +16,43 @@ body {
     display: none;
     /*margin-bottom: 20px;*/
     /*border: 1px solid black;*/
-    border-radius: 3pt;
-    background-color: #20c0c0;
+    border-radius: 1.5vw;
+    background-color: #404040;
 }
 
 .room {
-    width: 300pt;
-    margin: 5pt;
+    padding: 1vw;
+    horiz-align: center;
+    width: 90.0vw;
+    margin: 10pt;
     display: block;
     border: none;
-    /*margin-bottom: 20pt;*/
+    margin-bottom: 20pt;
     font-weight: bold;
     /*border: 1px solid black;*/
-    border-radius: 5pt;
+    border-radius: 2.0vw;
     color: white;
     background-color: #108080;
 }
 
+.actor_label {
+    font-size: 4.0vw;
+    display: inline-block;
+    width: 25.0vw;
+    text-align: left;
+}
+
 button {
-    font-size: x-large;
+    margin: 0.2vw;
+    font-size: 4.0vw;
     display: inline-block;
     /*margin: 1pt auto;*/
     background-color: #206020;
     color: #d0d0d0;
-    min-width: 50pt;
+    min-width: 10.0vw;
+    width: 10.0vw;
     //    border: 0.4em solid #d4f7da;
-    border-radius: 4pt;
+    border-radius: 5.0vw;
     transition: all 0.3s;
     box-sizing: border-box;
     cursor: pointer;
@@ -50,7 +62,7 @@ button {
 
 
 .summer_button {
-    font-size: 1.5em;
+//    font-size: 7.25vw;
     font-weight: bold;
 //    display: inline-block;
     //  margin: 0px auto;
@@ -67,25 +79,19 @@ button {
     text-align: right;
 }
 
-h2 {
-    font-size: 32px;
-    text-align: left;
-    color: white;
-    margin: 10px 0px 0px 0px;
-}
-
-
 .message_box {
     color: white;
     padding: 10px;
     margin: 15px;
     background-color: #103030;
     border: 1px solid #c0c0c0;
-    border-radius: 0.5em;
+    //border-radius: 0.5em;
+    horiz-align: center;
+    width: 90.0vw;
 }
 
 .etage_box {
-    padding: 10px;
+    padding: 40px;
     margin: 15px;
     background-color: #0da0a0;
     border: 1px solid #c0c0c0;

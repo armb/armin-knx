@@ -5,10 +5,10 @@
   "knx_multicast_interface": "192.168.0.195",
   "knx_multicast_port": 3671,
 
-  "room_list": [ "eg.wohnen", "eg.hobby","eg.flur", "eg.bathroom", "og.till", "og.bedroom", "og.bad", "keller" ],
+  "room_list": [ "eg.wohnen", "eg.hobby","eg.flur", "eg.kitchen", "eg.bad", "og.till", "og.bedroom", "og.bad", "keller" ],
   "rooms": {
     "eg.wohnen": {
-      "name": "EG Wohnzimmer"
+      "name": "EG Wohnen"
     },
     "eg.hobby": {
       "name": "EG Hobby"
@@ -16,23 +16,23 @@
     "eg.flur": {
       "name": "EG Flur"
     },
+    "eg.bad": {
+      "name": "EG Bad"
+    },
     "og.bedroom": {
-      "name": "Schlafzimmer"
+      "name": "OG Schlafen"
     },
     "keller": {
       "name": "Keller"
     },
     "og.bad": {
-      "name": "Badezimmer"
+      "name": "OG Bad"
     },
     "og.till": {
-      "name": "Tills Zimmer"
+      "name": "OG Till"
     },
     "eg.kitchen": {
-      "name": "Küche"
-    },
-    "eg.bathroom": {
-      "name": "Bad unten"
+      "name": "EG Küche"
     },
     "dachboden" : {
       "name": "Dachboden"
@@ -43,16 +43,22 @@
   },
   "actors": {
     "actor-eg.kitchen.sockets": {
-      "name": "Dosen",
+      "name": "Herd/Dosen",
       "room_id": "eg.kitchen",
       "commands": ["off","on"],
-      "eibaddr": "0/2/6"
+      "eibaddr": "0/7/7"
     },
     "actor-eg.hobby.shutter": {
       "name": "Rolladen",
       "room_id": "eg.hobby",
-      "commands": ["shutter-close"],
+      "commands": ["shutter-0", "shutter-50", "shutter-90", "shutter-180","shutter-200"],
       "eibaddr": "0/0/22"
+    },
+    "actor-eg.wohn.shutter2": {
+      "name": "Rolladen",
+      "room_id": "eg.wohnen",
+      "commands": ["shutter-0", "shutter-50", "shutter-90", "shutter-180","shutter-200"],
+      "eibaddr": "0/0/18"
     },
     "actor-eg.hobby.spots": {
       "name": "Spots",
@@ -90,11 +96,11 @@
       "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
       "eibaddr": "0/2/1"
     },
-    "actor-eg.bathroom.lamp": {
+    "actor-eg.bad.lamp": {
       "name": "Lampe",
-      "room_id": "eg.bathroom",
+      "room_id": "eg.bad",
       "commands": ["on", "off"],
-      "eibaddr": "0/4/0"
+      "eibaddr": "0/7/1"
     },
     "actor-eg.wohn.dosen": {
       "name": "Dosen",
@@ -136,7 +142,7 @@
   "sensors": {
     "sensor-eg.bathroom.brightness": {
       "dimension": "brightness",
-      "room_id": "eg.bathroom",
+      "room_id": "eg.bad",
       "name": "Helligkeit",
       "eibaddr": "0/3/3"
     },
@@ -187,6 +193,30 @@
       "room_id": "og.till",
       "name": "Licht 2",
       "eibaddr": "0/4/6"
+    },
+    "sensor-eg.bad.licht.status": {
+      "dimension": "onoff",
+      "room_id": "eg.bad",
+      "name": "Licht",
+      "eibaddr": "0/7/0"
+    },
+    "sensor-eg.flur.kanal-f.status": {
+      "dimension": "onoff",
+      "room_id": "eg.flur",
+      "name": "Kanal F",
+      "eibaddr": "0/1/5"
+    },
+    "sensor-eg.flur.kanal-g.status": {
+      "dimension": "onoff",
+      "room_id": "eg.flur",
+      "name": "Kanal G",
+      "eibaddr": "0/5/0"
+    },
+    "sensor-eg.flur.kanal-h.status": {
+      "dimension": "onoff",
+      "room_id": "eg.flur",
+      "name": "Kanal H",
+      "eibaddr": "0/7/9"
     }
   }
 }
