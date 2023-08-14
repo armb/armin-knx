@@ -1,13 +1,16 @@
 use std::borrow::Borrow;
 use std::error::Error;
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 use regex;
 use scanf::sscanf;
 use tokio::io;
 use crate::config::{Config, EibAddr, Sensor};
-use crate::data::{Dimension, Value, Unit};
+use crate::data::{Dimension, Unit, Measurement};
 
 use tokio::net::UdpSocket;
 use crate::data;
@@ -45,14 +48,17 @@ pub enum Command {
 pub struct Knx {
     config: Arc<Config>,
     data: Arc<Mutex<data::Data>>,
+    log: Mutex<File>,
 }
 
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Message {
+    timestamp: SystemTime,
     src: EibAddr,
     dst: EibAddr,
-    value: Option<Value>,
+    measurement: Option<Measurement>,
+    raw: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
@@ -111,15 +117,15 @@ impl KnxSocket {
 }
 
 impl Message {
-    pub fn from_raw(raw: &[u8]) -> Option<Message> {
+    pub fn from_raw(raw: Vec<u8>, timestamp: SystemTime) -> Result<Message, ()> {
         if raw.len() < 14 {
-            return None;
+            return Err(());
         }
         let src = EibAddr(raw[10] >> 4, raw[10] & 0xf, raw[11]);
         let dst = EibAddr(raw[12] >> 4, raw[12] & 0xf, raw[13]);
 
         let command: Option<Command> = None;
-        let mut measurement: Option<Value> = None;
+        let mut measurement: Option<Measurement> = None;
 
         match raw.len() {
             19 => {
@@ -129,40 +135,56 @@ impl Message {
                 let e: i32 = (raw[17] >> 3  & 0x0f) as i32;
                 let is_negative = raw[17] & 0x70 == 0x70;
                 // val = m * 2^e
-                let val = if is_negative {
+                let value = if is_negative {
                     -0.01 * (m << e) as f32
                 } else {
                     0.01 * (m << e) as f32
                 };
 
+                let (dimension, unit) = match raw[13] {
+                    0x01 => (Dimension::Brightness, Unit::Lux),
+                    0x03 => (Dimension::Brightness, Unit::Lux),
+                    0x04 => (Dimension::Temperature, Unit::Celsius),
+                    0x06 => (Dimension::Brightness, Unit::Lux),
+                    _ => (Dimension::None, Unit::One)
+                };
+
+                println!("message={:02X?}", raw);
                 // println!("float-Value (raw[17]|raw[18]): negative={is_negative}, e={e}, m={m} --> {}", val);
-                let m = Value { dimension: Dimension::Brightness, unit: Unit::One, value: Some(val) };
-                measurement = Some(m);
+                measurement = Some( Measurement{timestamp, dimension, unit, value: Some(value) });
             },
             17 => {
                 let onoff = if raw[16] == 0x80 { 0.0 } else { 1.0 };
-                let m = Value { dimension: Dimension::OnOff, unit: Unit::One, value: Some(onoff)};
+                measurement = Some( Measurement{timestamp, dimension: Dimension::OnOff, unit: Unit::One, value: Some(onoff)});
                 // println!("len=17: on/off value?");
-                measurement = Some(m)
             },
             18 => {
                 let percent = raw[17] as f32 * 100. / 255.;
                 // println!("len=18, percent={percent}");
-                let m = Value { dimension: Dimension::Percent, unit: Unit::One, value: Some(percent as f32) };
-                measurement = Some(m)
+                measurement = Some( Measurement{timestamp, dimension: Dimension::Percent, unit: Unit::One, value: Some(percent)});
+
             }
             len => {
                 println!("len={}: ???", len);
             }
         }
 
-        Some(Message { src, dst, value: measurement })
+        Ok(Message { timestamp, src, dst, measurement, raw: raw.to_vec() })
     }
 }
 
 
 pub fn create(config: Arc<Config>, data: Arc<Mutex<data::Data>>) -> Result<Knx, String> {
-    let knx = Knx { config, data };
+
+    let path = "log.txt";
+    let mut log = OpenOptions::new()
+        .write(true)
+        .append(true)
+        .open(path).expect("Could not open log.txt");
+    log.seek(SeekFrom::End(0)).expect("seek() failed");
+    let text = "-------\n".as_bytes();
+    log.write(text).expect("write() failed");
+    let knx = Knx { config, data, log: Mutex::new(log) };
     Ok(knx)
 }
 
@@ -192,24 +214,42 @@ impl Knx {
             let filled_buf = &mut buf[..number_of_bytes];
             // println!(
             //     "message {:02X?}", &filled_buf);
+            let timestamp = SystemTime::now();
 
-            match Message::from_raw(filled_buf) {
-                Some(msg) => {
-                    println!("knx-message from {:?}: measurement={:?}, raw={:02X?}", msg.src, msg.value, &filled_buf);
-                    if let Some( (id, sensor) )
-                        = self.get_sensor_from(&msg.dst) {
-                        if let Some(measurement) = msg.value {
-                            let mut data = self.data.lock().unwrap();
-                            match data.get_mut(id) {
-                                Some(mut m) => m.value = measurement.value,
-                                None => eprintln!("sensor not known in data struct?")
-                            };
+            match Message::from_raw(filled_buf.to_vec(), timestamp) {
+                Ok(msg) => {
+                    //println!("knx-message from {:?}: measurement={:?}, raw={:02X?}", msg.src, msg.value, &filled_buf);
+                    if let Some( (id, sensor) ) = self.get_sensor_from(&msg.dst) {
+                        println!("knx-message from {id}: measurement={:?}, raw={:02X?}", msg.measurement, &filled_buf);
+                        {
+                            let mut f = self.log.lock().unwrap();
+                            let now = SystemTime::now()
+                                .duration_since(SystemTime::UNIX_EPOCH)
+                                .expect("SystemTime::now()")
+                                .as_secs();
+                            match msg.measurement {
+                                Some(m) => {
+                                    let value = m.value.unwrap_or(0.);
+                                    f.write_fmt(
+                                        format_args!("{now};{id};{value}\n")).expect("write_fmt() to log");
+
+                                    // store in-memory
+                                    let mut data = self.data.lock().unwrap();
+                                    match data.get_mut(id) {
+                                        Some(mut store) => store.value = m.value,
+                                        None => eprintln!("sensor not known in data struct?")
+                                    };
+                                },
+                                None => {
+                                    // message without measurement
+                                }
+                            }
                         }
                     } else {
                         eprintln!("No handler for message to group-address {:?} (from {:?})", &msg.dst, &msg.src);
                     }
                 }
-                None => eprintln!("could not parse message.")
+                Err(()) => eprintln!("could not parse message.")
             }
 
         }
@@ -283,7 +323,7 @@ pub fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Result<SendMessage, ()>
 // // 'full': entspricht wert, der fuer vollstaendiges schliessen gesendet werden muss, z.B. 205
 fn create_knx_frame_rollo(grp: u16, percent: &u8) -> Result<SendMessage,()>
 {
-    let mut v = vec![
+    let v = vec![
     // knx/ip header
     // HEADER_LEN: 0x06,  VERSION: 0x10 (1.0), ROUTING_INDIXATION (0x05, 0x03), TOTAL-LEN(, 18)
     0x06u8, 0x10, 0x05, 0x30, 0x00, 18u8,
