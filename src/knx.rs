@@ -149,7 +149,7 @@ impl Message {
                     _ => (Dimension::None, Unit::One)
                 };
 
-                println!("message={:02X?}", raw);
+                // println!("message={:02X?}", raw);
                 // println!("float-Value (raw[17]|raw[18]): negative={is_negative}, e={e}, m={m} --> {}", val);
                 measurement = Some( Measurement{timestamp, dimension, unit, value: Some(value) });
             },
@@ -220,7 +220,14 @@ impl Knx {
                 Ok(msg) => {
                     //println!("knx-message from {:?}: measurement={:?}, raw={:02X?}", msg.src, msg.value, &filled_buf);
                     if let Some( (id, sensor) ) = self.get_sensor_from(&msg.dst) {
-                        println!("knx-message from {id}: measurement={:?}, raw={:02X?}", msg.measurement, &filled_buf);
+                        let value_string = match msg.measurement {
+                            Some(m) => match m.value {
+                                Some(v) => v.to_string(),
+                                None => "?".to_string()
+                            },
+                            None => "?".to_string()
+                        };
+                        println!("knx-message from {id}: measurement={value_string}, raw={:02X?}", filled_buf);
                         {
                             let mut f = self.log.lock().unwrap();
                             let now = SystemTime::now()

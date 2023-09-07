@@ -2,7 +2,7 @@
 name = "armin-knx"
 version = "0.1.0"
 authors = ["Armin <armin@arbu.eu>"]
-edition = "2018"
+edition = "2021"
 
 
 [dependencies]
@@ -13,3 +13,8 @@ regex = "1.2"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 handlebars = "4.3"
+
+
+[dependencies.druid]
+version = "0.8.0"
+features = ["im", "image"]
