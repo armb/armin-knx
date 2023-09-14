@@ -38,6 +38,15 @@ pub struct Sensor {
     pub eibaddr: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Switch {
+    pub name: String,
+    pub room_id: String,
+    pub eibaddr_command: String,
+    pub eibaddr_status: String,
+    pub commands: Vec<String>,
+}
+
 impl Sensor {
     pub fn get_dimension(&self) -> Dimension {
         match self.dimension.as_str() {
@@ -65,6 +74,7 @@ pub struct Config {
     pub rooms: HashMap<String, Room>,
     pub sensors: HashMap<String, Sensor>,
     pub actors: HashMap<String, actor>,
+    pub switches: HashMap<String, Switch>,
 }
 
 
@@ -85,6 +95,7 @@ impl Config {
             rooms: HashMap::new(),
             sensors: HashMap::new(),
             actors: HashMap::new(),
+            switches: HashMap::new(),
         }
     }
 
@@ -109,6 +120,9 @@ impl Config {
         }
         for (id, actor) in &self.actors {
             println!("actor '{id}': {actor:?}-")
+        }
+        for (id, switch) in &self.switches {
+            println!("switch '{id}': {switch:?}-")
         }
     }
 }

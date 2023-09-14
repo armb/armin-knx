@@ -30,10 +30,19 @@
                 {{#if (eq s.dimension "temperature")}}&#127777;{{s.measurement}} &deg;C{{/if}}
                 {{#if (eq s.dimension "percent")}}{{s.measurement}}%{{/if}}
                 {{#if (eq s.dimension "brightness")}}&#128526;{{s.measurement}} lux{{/if}}
+            ({{s.timestamp}})
             {{/each}}
         </div>
         <div class="room_actors" id="room_actors.{{r.id}}">
             <form target="result">
+                {{#each r.switches as |s|}}
+                <div class="actor_label">{{s.name}}:</div>{{s.status}}
+                {{#each s.commands as |c|}}
+                  {{#if (eq c "on")}}<button type="submit" formaction="actor/{{s.id}}/{{c}}">an</button>{{/if}}
+                  {{#if (eq c "off")}}<button type="submit" formaction="actor/{{s.id}}/{{c}}">aus</button>{{/if}}
+                {{/each}}
+                    <br/>
+                {{/each}}
             {{#each r.actors as |a|}}
                 <div class="actor_label">{{a.name}}:</div>{{a.status}}
                 <!-- actor {{a.id}}: commands={{a.commands}} -->

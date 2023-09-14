@@ -41,6 +41,51 @@
       "name": "Garage"
     }
   },
+  "switches": {
+    "eg-flur-relais-kanal-a": {
+      "name": "Licht",
+      "room_id": "eg.hobby",
+      "commands": [ "on", "off" ],
+      "eibaddr_command": "0/4/2",
+      "eibaddr_status": "0/4/3"
+    },
+    "eg-flur-relais-kanal-b": {
+      "name": "Kanal B",
+      "room_id": "eg.flur",
+      "commands": [ "on", "off" ],
+      "eibaddr_command": "0/5/12",
+      "eibaddr_status": "0/5/13"
+    },
+    "eg-flur-relais-kanal-c": {
+      "name": "Kanal C",
+      "room_id": "eg.flur",
+      "commands": [ "on", "off" ],
+      "eibaddr_command": "0/5/14",
+      "eibaddr_status": "0/5/15"
+    },
+    "eg-flur-relais-kanal-d": {
+      "name": "Fernseher",
+      "room_id": "eg.wohnen",
+      "commands": [ "on", "off" ],
+      "eibaddr_command": "0/5/16",
+      "eibaddr_status": "0/5/17"
+    },
+    "eg-flur-relais-kanal-e": {
+      "name": "Fenster",
+      "room_id": "eg.wohnen",
+      "commands": [ "on", "off" ],
+      "eibaddr_command": "0/5/18",
+      "eibaddr_status": "0/5/19"
+    },
+
+    "eg-flur-relais-kanal-h": {
+      "name": "Dosen",
+      "room_id": "eg.wohnen",
+      "commands": [ "on", "off" ],
+      "eibaddr_command": "0/5/8",
+      "eibaddr_status": "0/5/1"
+    }
+  },
   "actors": {
     "actor-eg.kitchen.sockets": {
       "name": "Herd/Dosen",
@@ -66,11 +111,11 @@
       "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
       "eibaddr": "0/2/3"
     },
-    "actor-eg.hobby.lampe": {
-      "name": "Lampe",
-      "room_id": "eg.hobby",
+    "actor-eg.bad.licht": {
+      "name": "Licht",
+      "room_id": "eg.bad",
       "commands": ["on", "off"],
-      "eibaddr": "0/4/2"
+      "eibaddr": "0/7/1"
     },
     "actor-og.till.lampe1": {
       "name": "Lampe 1",
@@ -102,20 +147,15 @@
       "commands": ["on", "off"],
       "eibaddr": "0/5/9"
     },
-    "actor-eg.wohn.dosen": {
-      "name": "Dosen",
-      "room_id": "eg.wohnen",
-      "commands": ["on", "off"],
-      "eibaddr": "0/5/8"
-    },
+
     "actor-eg.hobby.dosen": {
       "name": "Dosen",
-      "room_id": "eg.hobby",
+      "room_id": "eg.hobby-",
       "commands": ["on", "off"],
       "eibaddr": "0/5/7"
     },
     "actor-eg.hobby.schreibtisch": {
-      "name": "Schreibtisch",
+      "name": "Till & Armin",
       "room_id": "eg.hobby",
       "commands": ["on", "off"],
       "eibaddr": "0/5/6"

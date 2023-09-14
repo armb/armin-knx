@@ -243,7 +243,10 @@ impl Knx {
                                     // store in-memory
                                     let mut data = self.data.lock().unwrap();
                                     match data.get_mut(id) {
-                                        Some(mut store) => store.value = m.value,
+                                        Some(mut store) => {
+                                            store.timestamp = timestamp;
+                                            store.value = m.value
+                                        },
                                         None => eprintln!("sensor not known in data struct?")
                                     };
                                 },

@@ -1,4 +1,5 @@
 extern crate handlebars;
+extern crate chrono;
 
 use std::string::String;
 
@@ -14,6 +15,8 @@ use std::fs::File;
 use std::io::Read;
 use std::ops::Add;
 use std::str::FromStr;
+use std::time;
+use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 use handlebars::{to_json, Handlebars};
 use hyper::{Body, Request, Response, Server};
@@ -94,15 +97,18 @@ impl HttpServer {
         let binding = INSTANCE.clone().unwrap();
         let mut h = binding.lock().unwrap();
         #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateSensor { id: String, dimension: String, name:  String, measurement:  String };
+        struct TemplateSensor { id: String, dimension: String, name:  String, measurement:  String, timestamp: String };
         #[derive(Serialize, Deserialize, Debug, Clone)]
         struct TemplateActor { id:  String, name:  String, status: String, commands: Vec<String> };
+        #[derive(Serialize, Deserialize, Debug, Clone)]
+        struct TemplateSwitch { id:  String, name:  String, status: String, commands: Vec<String> };
         #[derive(Serialize, Deserialize, Debug, Clone)]
         struct TemplateRoom {
             id: String,
             name: String,
             actors: Vec<TemplateActor>,
-            sensors: Vec<TemplateSensor>
+            sensors: Vec<TemplateSensor>,
+            switches: Vec<TemplateSwitch>,
         };
 
         let mut template_rooms: Vec<TemplateRoom> = vec![];
@@ -121,8 +127,21 @@ impl HttpServer {
                         name: sensor.name.clone(),
                         dimension: sensor.dimension.clone(),
                         measurement: "".to_string(),
+                        timestamp: "".to_string(),
                     };
-                    template_sensor.measurement = match data.measurements.get(sensor_id) {
+                    let data_measurement = data.measurements.get(sensor_id);
+                    template_sensor.timestamp = match data_measurement {
+                        Some(m) => {
+                            if m.value.is_some() {
+                                let datetime: chrono::DateTime<chrono::Local> = m.timestamp.into();
+                                datetime.format("%T").to_string()
+                            } else {
+                                "".to_string()
+                            }
+                        },
+                        _ => "".to_string()
+                    };
+                    template_sensor.measurement = match data_measurement {
                         Some(measurement) => {
                             let unit_string = match sensor.dimension.as_str() {
                                 "temperature" => "°C",
@@ -154,11 +173,25 @@ impl HttpServer {
                     room_actors.push(template_actor);
                 }
             }
+            let mut room_switches: Vec<TemplateSwitch> = vec![];
+            for (switch_id, switch) in  &h.config.switches {
+                if switch.room_id.eq(room_id) {
+                    // println!("actor {0} in {1}: {2:?}", actor_id, actor.room_id, actor.commands);
+                    let template_switch = TemplateSwitch {
+                        id: switch_id.clone(),
+                        name: switch.name.clone(),
+                        status: "".to_string(),
+                        commands: switch.commands.clone()
+                    };
+                    room_switches.push(template_switch);
+                }
+            }
             let room = TemplateRoom {
                 id: room_id.clone(),
                 name: config_room.name.clone(),
                 sensors: room_sensors,
-                actors: room_actors};
+                actors: room_actors,
+                switches: room_switches};
             template_rooms.push( room );
          }
 
@@ -199,13 +232,23 @@ impl HttpServer {
         }
         if sscanf!(path, "/actor/{}/{}", set_id, command_string).is_ok() {
             println!("SET:  id={set_id} -> {command_string}");
-            let actor = h.config.actors.get(&set_id).expect("actor not found");
-            let addr = actor.eibaddr.clone();
-            // check if known command for actor
-            if !actor.commands.contains(&command_string) {
+            let mut addr = None;
+            if let Some(actor) = h.config.actors.get(&set_id) {
+                // check if known command for actor
+                if actor.commands.contains(&command_string) {
+                    addr = Some(actor.eibaddr.clone());
+                }
+            } else if let  Some(switch) = h.config.switches.get(&set_id) {
+                if switch.commands.contains(&command_string) {
+                    // check if known command for switch
+                    addr = Some(switch.eibaddr_command.clone());
+                }
+            }
+
+            if addr == None {
                 return Self::create_response_error(
                     &request,
-                    format!("actor {set_id} has no command '{command_string}'").to_string());
+                    format!("no actor/switch found for command '{command_string}'").to_string());
             };
 
             let command = match command_string.as_str() {
@@ -228,8 +271,8 @@ impl HttpServer {
                 },
             };
 
-            println!("SENDCOMMAND:  command={command:?} to {addr}");
-            let message = match h.knx.send(&addr, &command) {
+            println!("SENDCOMMAND:  command={command:?} to {addr:?}");
+            let message = match h.knx.send(&addr.unwrap(), &command) {
                 Ok(_) => HttpServer::response_message(Ok("sent command".to_string())),
                 Err(text) => HttpServer::response_message(Err(text)),
             };

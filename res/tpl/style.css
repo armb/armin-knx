@@ -62,21 +62,18 @@ button {
 
 
 .summer_button {
-//    font-size: 7.25vw;
     font-weight: bold;
-//    display: inline-block;
-    //  margin: 0px auto;
     background-color: #202020;
     color: #d0d0d0;
     //    border: 0.4em solid #d4f7da;
-    border-radius: 0.2em;
+    border-radius: 3em;
     transition: all 0.3s;
     box-sizing: border-box;
-//    width: auto;
-    //  height: 2em;
+    width: 10em;
+    height: 2em;
     cursor: pointer;
     box-shadow: 0 0 0 rgba(0,0,0,0.1), inset 0 0 0 rgba(0,0,0,0.1);
-    text-align: right;
+    text-align: center;
 }
 
 .message_box {
