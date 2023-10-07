@@ -65,7 +65,7 @@ async fn main() -> Result<()> {
     let future_httpserver = || async {
         unsafe {
             httpserver::HttpServer::create(
-            config.clone(), data.clone()).await;
+            config.clone(), data.clone()).await.expect("TODO: panic message");
             // let mut a = httpserver.lock().unwrap();
             httpserver::HttpServer::thread_function().await.expect("TODO: panic message");
         };

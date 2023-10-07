@@ -7,9 +7,11 @@ function toggleVisibility(id) {
     const e = document.getElementById(id);
     if (e.style.display != "block") {
         e.style.display = "block";
-    } else {
-        e.style.display = "none";
     }
+// never hide
+//    else {
+//        e.style.display = "none";
+//    }
 }
 
 

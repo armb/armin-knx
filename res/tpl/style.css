@@ -43,16 +43,16 @@ body {
 }
 
 button {
-    margin: 0.2vw;
+    margin: 0.1vw;
     font-size: 4.0vw;
     display: inline-block;
     /*margin: 1pt auto;*/
     background-color: #206020;
     color: #d0d0d0;
-    min-width: 10.0vw;
-    width: 10.0vw;
+    min-width: 12.0vw;
+    width: 12.0vw;
     //    border: 0.4em solid #d4f7da;
-    border-radius: 5.0vw;
+    border-radius: 1.0vw;
     transition: all 0.3s;
     box-sizing: border-box;
     cursor: pointer;
@@ -66,11 +66,11 @@ button {
     background-color: #202020;
     color: #d0d0d0;
     //    border: 0.4em solid #d4f7da;
-    border-radius: 3em;
+    border-radius: 1em;
     transition: all 0.3s;
     box-sizing: border-box;
-    width: 10em;
-    height: 2em;
+    width: 20em;
+    height: 3em;
     cursor: pointer;
     box-shadow: 0 0 0 rgba(0,0,0,0.1), inset 0 0 0 rgba(0,0,0,0.1);
     text-align: center;

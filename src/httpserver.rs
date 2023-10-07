@@ -1,5 +1,6 @@
 extern crate handlebars;
 extern crate chrono;
+extern crate plotters;
 
 use std::string::String;
 
@@ -15,7 +16,7 @@ use std::fs::File;
 use std::io::Read;
 use std::ops::Add;
 use std::str::FromStr;
-use std::time;
+use std::{os, time};
 use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 use handlebars::{to_json, Handlebars};
@@ -26,6 +27,11 @@ use hyper::header;
 use hyper::http::{HeaderValue};
 use hyper::server::conn::Http;
 use hyper::service::{make_service_fn, service_fn};
+use plotters::backend::{BitMapBackend, SVGBackend};
+use plotters::coord::Shift;
+use plotters::prelude::IntoDrawingArea;
+use plotters::series::AreaSeries;
+use plotters::style::{BLUE, Color, RED};
 use tokio::net::TcpListener;
 // use hyper::server::conn::AddrStream;
 // use serde_json::Value::String;
@@ -44,7 +50,7 @@ use crate::knx::{Command, KnxSocket};
 pub struct HttpServer {
     config: Arc<config::Config>,
     data: Arc<Mutex<data::Data>>,
-    knx: KnxSocket
+    knx: KnxSocket,
 }
 
 static mut INSTANCE: Option<Arc<Mutex<HttpServer>>> = None;
@@ -53,25 +59,65 @@ enum actor { NONE, ON, OFF, DIMMER { percent: u8 } }
 
 
 impl HttpServer {
-    pub async unsafe fn create(config: Arc<config::Config>, data: Arc<Mutex<data::Data>>) -> Arc<Mutex<HttpServer>> {
+    pub async unsafe fn create(config: Arc<config::Config>, data: Arc<Mutex<data::Data>>) -> Result<(), String> {
         // let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
         let mut knx = KnxSocket::create().unwrap();
         if let Some(server) = &config.knx_server {
             knx.connect(server).expect("could not set knx message target: {server}");
         }
 
+        // let mut drawing_area = BitMapBackend::new("images/drawing_area.png", (1024,768))
+//            .into_drawing_area();
+
+        let s = HttpServer { config, data, knx };
+
+
         //httpserver = Some(Arc<Mutex<HttpServer>>)
-        let s = Arc::new(Mutex::new( HttpServer { config, data, knx } ) );
         unsafe {
-            INSTANCE = Some(s.clone())
+             INSTANCE = Some( Arc::new(Mutex::new(s)) )
         };
-        //httpserver = Some(s.clone());
-        s
+
+        Ok ( () )
     }
 
 
-    async fn handle(&self, _req: Request<Body>) -> Result<Response<Body>, Infallible> {
-        Ok(Response::new(Body::from("Hello World")))
+    fn handle(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+
+
+        //let mut svg: String = "uninitialized".to_string();
+        //let mut drawing_area = plotters::backend::SVGBackend::with_string(&mut svg, (100, 100)).into_drawing_area();
+
+        let mut drawing_area = BitMapBackend::new("2.png", (600, 400))
+            .into_drawing_area();
+
+        drawing_area.fill(&plotters::prelude::WHITE).unwrap();
+
+
+        let mut chart = plotters::prelude::ChartBuilder::on(&drawing_area)
+             .build_cartesian_2d(-1.0..11.0, -2.0.. 30.0)
+             .unwrap();
+
+        let data = [(0,25.1), (1,37.2), (2,15.3), (3,32.4), (4,45.1), (5,33.6), (6,32.4), (7,10.3), (8,29.8), (9,0.9), (10,21.2)];
+
+        chart.draw_series(
+            AreaSeries::new(data.map(|(x,y)| (x as f64,y)),
+                            0.,
+                            BLUE.mix(0.2)).border_style(BLUE)).unwrap();
+        // chart.draw_series(
+        //     AreaSeries::new(
+        //         (0..).zip(data.iter().map(|x| *x)), // The data iter
+        //         0.0,                                  // Baseline
+        //         &RED.mix(0.2) // Make the series opac
+        //     ).border_style(&RED) // Make a brighter border
+        // )
+        //     .unwrap();
+
+        drawing_area.present().expect("TODO: panic message");
+
+       // println!("svg: {:?}", &mut svg);
+
+       // let plot = std::fs::read_to_string("2.png").expect("2.png");
+        Ok(Response::new(Body::from("...")))
     }
 
 
@@ -334,11 +380,12 @@ impl HttpServer {
     pub async unsafe fn thread_function() -> Result<(), Error> {
 
         //let c = httpserver.lock().expect("httpserver");
-        let addr_str = INSTANCE.clone().unwrap().lock().unwrap().config.http_listen_address.clone();
-        let addr = SocketAddr::from_str(&addr_str).expect("could not parse {addr_str} as SocketAddrV4");
-        println!("httpserver-address: {addr:?}");
+        //let addr_str = INSTANCE.clone().unwrap().lock().unwrap().config.http_listen_address.clone();
+        //let addr = SocketAddr::from_str(&addr_str).expect("could not parse {addr_str} as SocketAddrV4");
 
-        //let addr: SocketAddr = (Ipv4Addr::new(0, 0, 0, 0), 8080).into();
+
+        let addr: SocketAddr = (Ipv4Addr::new(0, 0, 0, 0), 8081).into();
+        println!("httpserver-address: {addr:?}");
 
        // let a = httpserver.clone().unwrap(); //arc
         let make_svc = make_service_fn(move |socket:&AddrStream| {
@@ -349,9 +396,10 @@ impl HttpServer {
                     //println!("service_fn: A");
                     //let mut h = INSTANCE.unwrap().clone().lock().unwrap();
                     //println!("service_fn: C");
-                    let response = HttpServer::create_response(request);
-                    //println!("service_fn: D");
-                    response
+                    match request.uri().path() {
+                        "/test" => HttpServer::handle(request).unwrap(),
+                        other => HttpServer::create_response(request)
+                    }
                 })
             });
             async move { Ok::<_, Infallible>(service) }
