@@ -49,14 +49,15 @@
                 {{#each a.commands as |c|}}
                     <!-- command {{c}} -->
                     {{#if (eq c "dim-0")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">aus</button>{{/if}}
-                    {{#if (eq c "dim-10")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">10%</button>{{/if}}
+                    {{#if (eq c "dim-5")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">5%</button>{{/if}}
+                     {{#if (eq c "dim-10")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">10%</button>{{/if}}
                     {{#if (eq c "dim-25")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">25%</button>{{/if}}
                     {{#if (eq c "dim-50")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">50%</button>{{/if}}
                     {{#if (eq c "dim-100")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">an</button>{{/if}}
                     {{#if (eq c "shutter-0")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">auf</button>{{/if}}
                     {{#if (eq c "shutter-50")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">halb</button>{{/if}}
                     {{#if (eq c "shutter-180")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">3/4</button>{{/if}}
-                    {{#if (eq c "shutter-200")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">zu</button>{{/if}}
+                    {{#if (eq c "shutter-255")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">zu</button>{{/if}}
                     {{#if (eq c "on")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">an</button>{{/if}}
                     {{#if (eq c "off")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">aus</button>{{/if}}
                 {{/each}}<br/>

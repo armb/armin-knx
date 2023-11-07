@@ -93,22 +93,34 @@
       "commands": ["off","on"],
       "eibaddr": "0/7/7"
     },
+    "actor-eg.kitchen.spots": {
+      "name": "Spots",
+      "room_id": "eg.kitchen",
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "eibaddr": "0/2/10"
+    },
     "actor-eg.hobby.shutter": {
       "name": "Rolladen",
       "room_id": "eg.hobby",
-      "commands": ["shutter-0", "shutter-50", "shutter-90", "shutter-180","shutter-200"],
+      "commands": ["shutter-0", "shutter-50", "shutter-90", "shutter-180","shutter-255"],
       "eibaddr": "0/0/22"
     },
     "actor-eg.wohn.shutter2": {
-      "name": "Rolladen",
+      "name": "Rolladen2",
       "room_id": "eg.wohnen",
-      "commands": ["shutter-0", "shutter-50", "shutter-90", "shutter-180","shutter-200"],
+      "commands": ["shutter-0", "shutter-50", "shutter-90", "shutter-180","shutter-255"],
       "eibaddr": "0/0/18"
+    },
+    "actor-eg.wohn.shutter1": {
+      "name": "Rolladen1",
+      "room_id": "eg.wohnen",
+      "commands": ["shutter-0", "shutter-50", "shutter-90", "shutter-180","shutter-255"],
+      "eibaddr": "0/0/16"
     },
     "actor-eg.hobby.spots": {
       "name": "Spots",
       "room_id": "eg.hobby",
-      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "commands": ["dim-0", "dim-5", "dim-10", "dim-25", "dim-50", "dim-100"],
       "eibaddr": "0/2/3"
     },
     "actor-eg.bad.licht": {
@@ -132,13 +144,13 @@
     "actor-eg.wohn.lampe": {
       "name": "Lampe",
       "room_id": "eg.wohnen",
-      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-100"],
       "eibaddr": "0/2/2"
     },
     "actor-eg.wohn.spots": {
       "name": "Spots",
       "room_id": "eg.wohnen",
-      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-100"],
       "eibaddr": "0/2/1"
     },
     "actor-og.bad.schrank": {
@@ -169,13 +181,13 @@
     "actor-og.bedroom.spots": {
       "name": "Spots",
       "room_id": "og.bedroom",
-      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "commands": ["dim-0", "dim-5", "dim-10", "dim-25", "dim-100"],
       "eibaddr": "0/2/23"
     },
     "actor-og.bedroom.lampe": {
       "name": "Lampe",
       "room_id": "og.bedroom",
-      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "commands": ["dim-0", "dim-5", "dim-10", "dim-25", "dim-100"],
       "eibaddr": "0/2/33"
     },
     "actor-og.bedroom.dosen": {
