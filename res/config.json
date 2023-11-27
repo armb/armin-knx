@@ -1,6 +1,6 @@
 {
   "http_listen_address": "0.0.0.0:8081",
-  "knx_server": "224.0.23.12:3671",
+  "knx_server": "192.168.0.90:3671",
   "knx_multicast_group": "224.0.23.12",
   "knx_multicast_interface": "192.168.0.196",
   "knx_multicast_port": 3671,
@@ -77,13 +77,19 @@
       "eibaddr_command": "0/5/18",
       "eibaddr_status": "0/5/19"
     },
-
     "eg-flur-relais-kanal-h": {
       "name": "Dosen",
       "room_id": "eg.wohnen",
       "commands": [ "on", "off" ],
       "eibaddr_command": "0/5/8",
       "eibaddr_status": "0/5/1"
+    },
+    "eg-keller-relais-trockner": {
+      "name": "Trockner",
+      "room_id": "keller",
+      "commands": [ "on", "off" ],
+      "eibaddr_command": "0/1/1",
+      "eibaddr_status": "0/1/7"
     }
   },
   "actors": {
