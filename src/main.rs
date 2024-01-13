@@ -53,11 +53,6 @@ async fn main() -> Result<()> {
         }
     }
 
-    // let content = "<!DOCTYPE html>\n".to_string()
-    //     + html.render(html::What::Index).expect("html render error").as_str();
-    //
-    // std::fs::write("/tmp/out.html", content).expect("html render error");
-
     let mut knx = knx::create(
         config.clone(), data.clone()).expect("create knx");
 
@@ -82,45 +77,5 @@ async fn main() -> Result<()> {
         let (_first, _second) = tokio::join!(future_httpserver(), future_knx);
     //});
 
-
-    // describe the main window
-    // let main_window = WindowDesc::new(build_root_widget())
-    //     .title(WINDOW_TITLE)
-    //     .window_size((400.0, 400.0));
-    //
-    // // create the initial app state
-    // let initial_state = HelloState {
-    //     name: "World".into(),
-    // };
-    //
-    // // start the application
-    // AppLauncher::with_window(main_window)
-    //     .launch(initial_state)
-    //     .expect("Failed to launch application");
-
-    //tokio::join!(future_knx, future_httpserver);
-
-    // tokio::join!(future_knx);
-
     Ok(())
-}
-
-
-fn build_root_widget() -> impl Widget<HelloState> {
-    // a label that will determine its text based on the current app data.
-    let label = Label::new(|data: &HelloState, _env: &Env| format!("Hello {}!", data.name));
-    // a textbox that modifies `name`.
-    let textbox = TextBox::new()
-        .with_placeholder("Who are we greeting?")
-        .fix_width(TEXT_BOX_WIDTH)
-        .lens(HelloState::name);
-
-    // arrange the two widgets vertically, with some padding
-    let layout = Flex::column()
-        .with_child(label)
-        .with_spacer(VERTICAL_WIDGET_SPACING)
-        .with_child(textbox);
-
-    // center the two widgets in the available space
-    Align::centered(layout)
 }
