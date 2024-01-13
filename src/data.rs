@@ -1,7 +1,7 @@
 use std::collections::{HashMap, LinkedList};
 use std::error::Error;
 use std::time::SystemTime;
-use crate::config::Sensor;
+use crate::config::{Sensor, Switch};
 use crate::data::Dimension::{Brightness, Temperature};
 use crate::data::Unit::Watts;
 
@@ -55,6 +55,15 @@ impl Data {
             Err("measurement entry for sensor already created".into())
         } else {
             let initial = Measurement { timestamp: SystemTime::now(), unit: Unit::One, dimension: sensor.get_dimension(), value: None};
+            self.measurements.insert(id.to_string(), initial);
+            Ok(())
+        }
+    }
+    pub fn add_switch(&mut self, id: &SensorId, switch: &Switch) -> Result<(), String> {
+        if self.measurements.contains_key(id) {
+            Err("measurement entry for sensor already created".into())
+        } else {
+            let initial = Measurement { timestamp: SystemTime::now(), unit: Unit::One, dimension: Dimension::OnOff, value: None};
             self.measurements.insert(id.to_string(), initial);
             Ok(())
         }

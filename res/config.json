@@ -42,6 +42,13 @@
     }
   },
   "switches": {
+    "actor-eg.hobby.schreibtisch": {
+      "name": "Till & Armin",
+      "room_id": "eg.hobby",
+      "commands": ["on", "off"],
+      "eibaddr_command": "0/5/6",
+      "eibaddr_status": "0/5/2"
+    },
     "eg-flur-relais-kanal-a": {
       "name": "Licht",
       "room_id": "eg.hobby",
@@ -150,13 +157,13 @@
     "actor-eg.wohn.lampe": {
       "name": "Lampe",
       "room_id": "eg.wohnen",
-      "commands": ["dim-0", "dim-10", "dim-25", "dim-100"],
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
       "eibaddr": "0/2/2"
     },
     "actor-eg.wohn.spots": {
       "name": "Spots",
       "room_id": "eg.wohnen",
-      "commands": ["dim-0", "dim-10", "dim-25", "dim-100"],
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
       "eibaddr": "0/2/1"
     },
     "actor-og.bad.schrank": {
@@ -171,12 +178,6 @@
       "room_id": "eg.hobby-",
       "commands": ["on", "off"],
       "eibaddr": "0/5/7"
-    },
-    "actor-eg.hobby.schreibtisch": {
-      "name": "Till & Armin",
-      "room_id": "eg.hobby",
-      "commands": ["on", "off"],
-      "eibaddr": "0/5/6"
     },
     "actor-og.till.dosen": {
       "name": "Dosen",

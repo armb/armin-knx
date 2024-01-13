@@ -45,6 +45,12 @@ async fn main() -> Result<()> {
                 Err(m) => eprintln!("ERROR: {m}")
             }
         }
+        for (id, switch) in &config.switches {
+            match data.add_switch(&id, switch) {
+                Ok(_) => println!("added switch {id}"),
+                Err(m) => eprintln!("ERROR: {m}")
+            }
+        }
     }
 
     // let content = "<!DOCTYPE html>\n".to_string()

@@ -81,7 +81,7 @@ impl HttpServer {
     }
 
 
-    fn handle(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    fn create_plot_response(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
 
 
         //let mut svg: String = "uninitialized".to_string();
@@ -116,8 +116,11 @@ impl HttpServer {
 
        // println!("svg: {:?}", &mut svg);
 
-       // let plot = std::fs::read_to_string("2.png").expect("2.png");
-        Ok(Response::new(Body::from("...")))
+       let plot = std::fs::read("2.png").expect("2.png");
+        let response = Response::builder()
+            .header("Content-type", "image/png")
+            .body(Body::from(plot)).expect("response");
+        Ok(response)
     }
 
 
@@ -399,7 +402,7 @@ impl HttpServer {
                     //let mut h = INSTANCE.unwrap().clone().lock().unwrap();
                     //println!("service_fn: C");
                     match request.uri().path() {
-                        "/test" => HttpServer::handle(request).unwrap(),
+                        "/test" => HttpServer::create_plot_response(request).unwrap(),
                         other => HttpServer::create_response(request)
                     }
                 })
