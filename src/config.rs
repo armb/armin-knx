@@ -79,7 +79,7 @@ pub struct Config {
 
 impl Config {
     pub fn serialize(&self) -> Result<String, ()> {
-        serde_json::to_string(self).map_err(|x| { () })
+        serde_json::to_string(self).map_err(|_x| { () })
     }
 
     pub fn default() -> Config {
@@ -102,7 +102,7 @@ impl Config {
         let content = std::fs::read_to_string(path)
             .expect("Could not read file at {path}");
 
-        let mut config: Config = serde_json::from_str(&content)
+        let config: Config = serde_json::from_str(&content)
             .expect(":-(");
 
         Ok(config)

@@ -59,7 +59,7 @@ impl Data {
             Ok(())
         }
     }
-    pub fn add_switch(&mut self, id: &SensorId, switch: &Switch) -> Result<(), String> {
+    pub fn add_switch(&mut self, id: &SensorId, _switch: &Switch) -> Result<(), String> {
         if self.measurements.contains_key(id) {
             Err("measurement entry for sensor already created".into())
         } else {

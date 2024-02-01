@@ -38,7 +38,6 @@ use tokio::net::TcpListener;
 use crate::{config, Config, data, knx};
 use crate::data::{Data, Dimension};
 use crate::config::{Room};
-use crate::httpserver::actor::{OFF, ON};
 
 use serde_json::value::{Map, Value as Json};
 use serde_json::json;
@@ -48,6 +47,122 @@ use crate::knx::{Command, KnxSocket};
 
 #[derive(Debug)]
 pub struct HttpServer {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     config: Arc<config::Config>,
     data: Arc<Mutex<data::Data>>,
     knx: KnxSocket,
@@ -55,7 +170,7 @@ pub struct HttpServer {
 
 static mut INSTANCE: Option<Arc<Mutex<HttpServer>>> = None;
 
-enum actor { NONE, ON, OFF, DIMMER { percent: u8 } }
+enum Actor { NONE, ON, OFF, DIMMER { percent: u8 } }
 
 
 impl HttpServer {
@@ -87,7 +202,7 @@ impl HttpServer {
         //let mut svg: String = "uninitialized".to_string();
         //let mut drawing_area = plotters::backend::SVGBackend::with_string(&mut svg, (100, 100)).into_drawing_area();
 
-        let mut drawing_area = BitMapBackend::new("2.png", (600, 400))
+        let drawing_area = BitMapBackend::new("2.png", (600, 400))
             .into_drawing_area();
 
         drawing_area.fill(&plotters::prelude::WHITE).unwrap();
@@ -146,9 +261,9 @@ impl HttpServer {
         let binding = INSTANCE.clone().unwrap();
         let mut h = binding.lock().unwrap();
         #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateSensor { id: String, dimension: String, name:  String, measurement:  String, timestamp: String };
+        struct TemplateSensor { id: String, dimension: String, name:  String, measurement:  String, timestamp: String }
         #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateActor { id:  String, name:  String, status: String, commands: Vec<String> };
+        struct TemplateActor { id:  String, name:  String, status: String, commands: Vec<String> }
         #[derive(Serialize, Deserialize, Debug, Clone)]
         struct TemplateSwitch { id:  String, name:  String, status: String, commands: Vec<String> };
         #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -158,7 +273,7 @@ impl HttpServer {
             actors: Vec<TemplateActor>,
             sensors: Vec<TemplateSensor>,
             switches: Vec<TemplateSwitch>,
-        };
+        }
 
         let mut template_rooms: Vec<TemplateRoom> = vec![];
         for room_id in &h.config.room_list {
@@ -393,7 +508,7 @@ impl HttpServer {
         println!("httpserver-address: {addr:?}");
 
        // let a = httpserver.clone().unwrap(); //arc
-        let make_svc = make_service_fn(move |socket:&AddrStream| {
+        let make_svc = make_service_fn(move |_socket:&AddrStream| {
             //let remote_addr = socket.remote_addr();
             println!("make_service_fn: A");
             let service= service_fn(|request: Request<Body>| async move {
@@ -403,7 +518,7 @@ impl HttpServer {
                     //println!("service_fn: C");
                     match request.uri().path() {
                         "/test" => HttpServer::create_plot_response(request).unwrap(),
-                        other => HttpServer::create_response(request)
+                        _other => HttpServer::create_response(request)
                     }
                 })
             });

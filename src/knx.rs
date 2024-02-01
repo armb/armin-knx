@@ -104,7 +104,6 @@ impl KnxSocket {
             Command::Dimmer(x) => create_knx_frame_dimmer(grp, x.clone()),
             Command::Switch(x) => create_knx_frame_onoff(grp, x.clone()),
             Command::Shutter(x) => create_knx_frame_rollo(grp, x),
-            _ => Err( () )
         }.expect("knx frame not defined for command");
 
         println!("SEND: {group_string} -> {addr:?} -> {grp}: {msg:0X?}");
@@ -124,7 +123,7 @@ impl Message {
         let src = EibAddr(raw[10] >> 4, raw[10] & 0xf, raw[11]);
         let dst = EibAddr(raw[12] >> 4, raw[12] & 0xf, raw[13]);
 
-        let command: Option<Command> = None;
+        let _command: Option<Command> = None;
         let mut measurement: Option<Measurement> = None;
 
         match raw.len() {
@@ -208,7 +207,7 @@ impl Knx {
             // println!("knx: loop begin");
             let mut buf = [0; 128];
             // println!("waiting for frame...");
-            let (number_of_bytes, addr) = socket.recv_from(&mut buf)
+            let (number_of_bytes, _addr) = socket.recv_from(&mut buf)
                 .await.expect("can not call recv_from() on udp socket");
             // create a slice
             let filled_buf = &mut buf[..number_of_bytes];
@@ -219,7 +218,7 @@ impl Knx {
             match Message::from_raw(filled_buf.to_vec(), timestamp) {
                 Ok(msg) => {
                     //println!("knx-message from {:?}: measurement={:?}, raw={:02X?}", msg.src, msg.value, &filled_buf);
-                    if let Some( (id, sensor) ) = self.get_sensor_from(&msg.dst) {
+                    if let Some( (id, _sensor) ) = self.get_sensor_from(&msg.dst) {
                         let value_string = match msg.measurement {
                             Some(m) => match m.value {
                                 Some(v) => v.to_string(),
