@@ -65,9 +65,9 @@ struct TemplateSwitch { id:  String, name:  String, status: String, commands: Ve
 struct TemplateRoom {
     id: String,
     name: String,
-    actors: Vec<crate::httpserver::TemplateActor>,
-    sensors: Vec<crate::httpserver::TemplateSensor>,
-    switches: Vec<crate::httpserver::TemplateSwitch>,
+    actors: Vec<TemplateActor>,
+    sensors: Vec<TemplateSensor>,
+    switches: Vec<TemplateSwitch>,
 }
 
 static mut INSTANCE: Option<Arc<Mutex<HttpServer>>> = None;
@@ -246,17 +246,7 @@ impl HttpServer {
         let binding = INSTANCE.clone().unwrap();
         let mut h = binding.lock().unwrap();
 
-        let mut template_rooms: Vec<TemplateRoom> = vec![];
-        for room_id in &h.config.room_list {
-            if ! h.config.rooms.contains_key(room_id) {
-                eprintln!("Details zu Raum {room_id} nicht in Konfiguration gefunden.");
-            }
 
-            let room = HttpServer::template_data_for_room(room_id, &h.config, &h.data)
-                .expect("Could not find room details in config");
-
-            template_rooms.push( room );
-         }
 
         let path = request.uri().path();
         let mut set_id =  String::new();
@@ -364,6 +354,16 @@ impl HttpServer {
                     .body(body)
             }
             "/" => {
+                let mut template_rooms: Vec<TemplateRoom> = vec![];
+                for room_id in &h.config.room_list {
+                    if ! h.config.rooms.contains_key(room_id) {
+                        eprintln!("Details zu Raum {room_id} nicht in Konfiguration gefunden.");
+                    }
+                    let room = HttpServer::template_data_for_room(room_id, &h.config, &h.data)
+                        .expect("Could not find room details in config");
+                    template_rooms.push( room );
+                }
+
                 let mut handlebars = Handlebars::new();
                 handlebars.set_dev_mode(true);
                 handlebars.register_template_file("index", "res/tpl/tpl_index.html")
