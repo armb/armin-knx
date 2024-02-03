@@ -33,19 +33,35 @@ pub struct Measurement {
     pub(crate) value: Option<f32>,
 }
 
-#[derive(Debug, Clone)]
+#[derive()]
 pub struct Data {
     // sensor-id
     pub measurements: HashMap<SensorId, Measurement>,
     pub log: HashMap<SensorId, LinkedList<Measurement> >,
+    pub sqlite: sqlite::Connection
 }
+
 
 impl Data {
     pub fn new() -> Self {
+        // let o = sqlite::open(":memory:").unwrap();
+        let o = sqlite::open("a.sqlite").unwrap();
+        let query_create = "CREATE TABLE data (time INTEGER, name TEXT, value INTEGER);";
+        match o.execute(query_create) {
+            Ok(..) => eprintln!("created new table"),
+            Err(..) => eprintln!("could not create new table")
+        }
         Self {
             measurements: HashMap::new(),
             log: HashMap::new(),
+            sqlite: o
         }
+    }
+    pub fn insert(&mut self, id: &SensorId, value: f32) {
+        let time = chrono::Local::now().timestamp();
+        self.sqlite.execute(
+            format!("INSERT INTO data VALUES ({time}, '{id}', {value});")
+        ).expect("sqlite insert");
     }
     pub fn get_mut(&mut self, id: &SensorId) -> Option<&mut Measurement> {
         self.measurements.get_mut(id)

@@ -248,6 +248,7 @@ impl Knx {
                                         },
                                         None => eprintln!("sensor not known in data struct?")
                                     };
+                                    data.insert(id, m.value.unwrap_or(0.0));
                                 },
                                 None => {
                                     // message without measurement
