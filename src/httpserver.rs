@@ -45,127 +45,29 @@ use serde_json::json;
 use crate::knx::{Command, KnxSocket};
 
 
-#[derive(Debug)]
+#[derive()]
 pub struct HttpServer {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     config: Arc<config::Config>,
     data: Arc<Mutex<data::Data>>,
     knx: KnxSocket,
+
+
+
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct TemplateSensor { id: String, dimension: String, name:  String, measurement:  String, timestamp: String }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct TemplateActor { id:  String, name:  String, status: String, commands: Vec<String> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct TemplateSwitch { id:  String, name:  String, status: String, commands: Vec<String> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct TemplateRoom {
+    id: String,
+    name: String,
+    actors: Vec<crate::httpserver::TemplateActor>,
+    sensors: Vec<crate::httpserver::TemplateSensor>,
+    switches: Vec<crate::httpserver::TemplateSwitch>,
 }
 
 static mut INSTANCE: Option<Arc<Mutex<HttpServer>>> = None;
@@ -254,108 +156,105 @@ impl HttpServer {
         return Response::builder().status(400).body(Body::from(message)).unwrap()
     }
 
+
+    fn template_data_for_room(room_id: &String, config: &Arc<Config>, data: &Arc<Mutex<Data>>) -> Result<TemplateRoom, String> {
+        let config_room = config.rooms.get(room_id)
+            .expect("Raum nicht gefunden");
+
+        let mut room_sensors: Vec<TemplateSensor> = vec![];
+        for (sensor_id, sensor) in &config.sensors {
+            if sensor.room_id.eq(room_id) {
+                let data = data.lock().unwrap();
+                let mut template_sensor = TemplateSensor {
+                    id: sensor_id.clone(),
+                    name: sensor.name.clone(),
+                    dimension: sensor.dimension.clone(),
+                    measurement: "".to_string(),
+                    timestamp: "".to_string(),
+                };
+                let data_measurement = data.measurements.get(sensor_id);
+                template_sensor.timestamp = match data_measurement {
+                    Some(m) => {
+                        if m.value.is_some() {
+                            let datetime: chrono::DateTime<chrono::Local> = m.timestamp.into();
+                            datetime.format("%T").to_string()
+                        } else {
+                            "".to_string()
+                        }
+                    },
+                    _ => "".to_string()
+                };
+                template_sensor.measurement = match data_measurement {
+                    Some(measurement) => {
+                        let unit_string = match sensor.dimension.as_str() {
+                            "temperature" => "°C",
+                            "brightness" => "lux",
+                            "onoff" => "",
+                            _ => "?"
+                        };
+                        if let Some(value) = measurement.value {
+                            format!("{value:.1}")
+                        } else {
+                            "?".to_string()
+                        }
+                    },
+                    None => "?".to_string()
+                };
+                room_sensors.push(template_sensor);
+            }
+        }
+        let mut room_actors: Vec<TemplateActor> = vec![];
+        for (actor_id, actor) in  &config.actors {
+            if actor.room_id.eq(room_id) {
+                // println!("actor {0} in {1}: {2:?}", actor_id, actor.room_id, actor.commands);
+                let template_actor = TemplateActor {
+                    id: actor_id.clone(),
+                    name: actor.name.clone(),
+                    status: "".to_string(),
+                    commands: actor.commands.clone()
+                };
+                room_actors.push(template_actor);
+            }
+        }
+        let mut room_switches: Vec<TemplateSwitch> = vec![];
+        for (switch_id, switch) in  &config.switches {
+            if switch.room_id.eq(room_id) {
+                // println!("actor {0} in {1}: {2:?}", actor_id, actor.room_id, actor.commands);
+                let template_switch = TemplateSwitch {
+                    id: switch_id.clone(),
+                    name: switch.name.clone(),
+                    status: "".to_string(),
+                    commands: switch.commands.clone()
+                };
+                room_switches.push(template_switch);
+            }
+        }
+        let room = TemplateRoom {
+            id: room_id.clone(),
+            name: config_room.name.clone(),
+            sensors: room_sensors,
+            actors: room_actors,
+            switches: room_switches };
+
+        Ok( room )
+    }
+
     unsafe fn create_response(request: Request<Body>) -> Response<Body> {
 
         println!("--- REQUEST: {request:?}");
 
         let binding = INSTANCE.clone().unwrap();
         let mut h = binding.lock().unwrap();
-        #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateSensor { id: String, dimension: String, name:  String, measurement:  String, timestamp: String }
-        #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateActor { id:  String, name:  String, status: String, commands: Vec<String> }
-        #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateSwitch { id:  String, name:  String, status: String, commands: Vec<String> };
-        #[derive(Serialize, Deserialize, Debug, Clone)]
-        struct TemplateRoom {
-            id: String,
-            name: String,
-            actors: Vec<TemplateActor>,
-            sensors: Vec<TemplateSensor>,
-            switches: Vec<TemplateSwitch>,
-        }
 
         let mut template_rooms: Vec<TemplateRoom> = vec![];
         for room_id in &h.config.room_list {
             if ! h.config.rooms.contains_key(room_id) {
                 eprintln!("Details zu Raum {room_id} nicht in Konfiguration gefunden.");
             }
-            let config_room = h.config.rooms.get(room_id)
-                .expect("Raum nicht gefunden");
-            let mut room_sensors: Vec<TemplateSensor> = vec![];
-            for (sensor_id, sensor) in &h.config.sensors {
-                if sensor.room_id.eq(room_id) {
-                    let data = h.data.lock().unwrap();
-                    let mut template_sensor = TemplateSensor {
-                        id: sensor_id.clone(),
-                        name: sensor.name.clone(),
-                        dimension: sensor.dimension.clone(),
-                        measurement: "".to_string(),
-                        timestamp: "".to_string(),
-                    };
-                    let data_measurement = data.measurements.get(sensor_id);
-                    template_sensor.timestamp = match data_measurement {
-                        Some(m) => {
-                            if m.value.is_some() {
-                                let datetime: chrono::DateTime<chrono::Local> = m.timestamp.into();
-                                datetime.format("%T").to_string()
-                            } else {
-                                "".to_string()
-                            }
-                        },
-                        _ => "".to_string()
-                    };
-                    template_sensor.measurement = match data_measurement {
-                        Some(measurement) => {
-                            let unit_string = match sensor.dimension.as_str() {
-                                "temperature" => "°C",
-                                "brightness" => "lux",
-                                "onoff" => "",
-                                _ => "?"
-                            };
-                            if let Some(value) = measurement.value {
-                                format!("{value:.1}")
-                            } else {
-                                "?".to_string()
-                            }
-                        },
-                        None => "?".to_string()
-                    };
-                    room_sensors.push(template_sensor);
-                }
-            }
-            let mut room_actors: Vec<TemplateActor> = vec![];
-            for (actor_id, actor) in  &h.config.actors {
-                if actor.room_id.eq(room_id) {
-                    // println!("actor {0} in {1}: {2:?}", actor_id, actor.room_id, actor.commands);
-                    let template_actor = TemplateActor {
-                        id: actor_id.clone(),
-                        name: actor.name.clone(),
-                        status: "".to_string(),
-                        commands: actor.commands.clone()
-                    };
-                    room_actors.push(template_actor);
-                }
-            }
-            let mut room_switches: Vec<TemplateSwitch> = vec![];
-            for (switch_id, switch) in  &h.config.switches {
-                if switch.room_id.eq(room_id) {
-                    // println!("actor {0} in {1}: {2:?}", actor_id, actor.room_id, actor.commands);
-                    let template_switch = TemplateSwitch {
-                        id: switch_id.clone(),
-                        name: switch.name.clone(),
-                        status: "".to_string(),
-                        commands: switch.commands.clone()
-                    };
-                    room_switches.push(template_switch);
-                }
-            }
-            let room = TemplateRoom {
-                id: room_id.clone(),
-                name: config_room.name.clone(),
-                sensors: room_sensors,
-                actors: room_actors,
-                switches: room_switches};
+
+            let room = HttpServer::template_data_for_room(room_id, &h.config, &h.data)
+                .expect("Could not find room details in config");
+
             template_rooms.push( room );
          }
 
