@@ -1,0 +1,12 @@
+[
+  {
+    "actor": "actor-eg.hobby.spots",
+    "command": "dim-100",
+    "time": "10:00:00"
+  },
+  {
+    "actor": "actor-eg.hobby.spots",
+    "command": "dim-0",
+    "time": "10:00:01"
+  }
+]

@@ -1,4 +1,5 @@
 
+use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 use crate::config::Config;
@@ -8,25 +9,14 @@ mod knx;
 mod config;
 mod data;
 mod httpserver;
-
-use druid::widget::{Align, Flex, Label, TextBox};
-use druid::{AppLauncher, Data, Env, Lens, LocalizedString, Widget, WindowDesc, WidgetExt};
-
-const VERTICAL_WIDGET_SPACING: f64 = 20.0;
-const TEXT_BOX_WIDTH: f64 = 200.0;
-const WINDOW_TITLE: LocalizedString<HelloState> = LocalizedString::new("Hello World!");
-
-#[derive(Clone, Data, Lens)]
-struct HelloState {
-    name: String,
-}
+mod scheduler;
 
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), > {
     let path = "res/config.json".to_string();
     let config =
         Arc::new(
@@ -73,8 +63,12 @@ async fn main() -> Result<()> {
     };
 
 
+    let scheduler = scheduler::Scheduler::new("res/schedule.json").expect("read schedule");
+    let future_scheduler = scheduler.thread_function();
+
+
     //let _handle = thread::spawn(move || {
-        let (_first, _second) = tokio::join!(future_httpserver(), future_knx);
+        let _ = tokio::join!(future_httpserver(), future_knx, future_scheduler);
     //});
 
     Ok(())

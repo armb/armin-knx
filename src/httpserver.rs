@@ -6,42 +6,30 @@ use std::string::String;
 
 use scanf::sscanf;
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, HashMap, LinkedList};
-//use hyper::server::Server;
 use std::sync::{Arc, Mutex};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::net::{Ipv4Addr, SocketAddr};
 use std::convert::Infallible;
 use std::fmt::Error;
 use std::fs::File;
 use std::io::Read;
-use std::ops::Add;
 use std::str::FromStr;
-use std::{os, time};
-use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
-use handlebars::{to_json, Handlebars};
+use handlebars::{Handlebars};
 use hyper::{Body, Request, Response, Server};
 use hyper::body::HttpBody;
 use hyper::server::conn::AddrStream;
 use hyper::header;
-use hyper::http::{HeaderValue};
-use hyper::server::conn::Http;
 use hyper::service::{make_service_fn, service_fn};
-use plotters::backend::{BitMapBackend, SVGBackend};
-use plotters::coord::Shift;
+use plotters::backend::{BitMapBackend};
 use plotters::prelude::IntoDrawingArea;
 use plotters::series::AreaSeries;
 use plotters::style::{BLUE, Color, RED};
-use tokio::net::TcpListener;
-// use hyper::server::conn::AddrStream;
-// use serde_json::Value::String;
+
 use crate::{config, Config, data, knx};
-use crate::data::{Data, Dimension};
-use crate::config::{Room};
+use crate::data::{Data};
 
 use serde_json::value::{Map, Value as Json};
 use serde_json::json;
-// use serde_json::Value::String;
 use crate::knx::{Command, KnxSocket};
 
 
@@ -98,8 +86,12 @@ impl HttpServer {
     }
 
 
-    fn create_plot_response(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    unsafe fn create_plot_response(request: Request<Body>) -> Result<Response<Body>, Infallible> {
 
+        println!("--- REQUEST: {request:?}");
+
+        let binding = INSTANCE.clone().unwrap();
+        let mut h = binding.lock().unwrap();
 
         //let mut svg: String = "uninitialized".to_string();
         //let mut drawing_area = plotters::backend::SVGBackend::with_string(&mut svg, (100, 100)).into_drawing_area();
@@ -109,6 +101,21 @@ impl HttpServer {
 
         drawing_area.fill(&plotters::prelude::WHITE).unwrap();
 
+        //
+        let data = h.data.lock().unwrap();
+        let now = chrono::Local::now().timestamp();
+        let begin = now - 3600 * 24;
+        let query = format!("SELECT * FROM data WHERE timestamp > {begin}"); // WHERE timestamp > now()-24h
+        let mut statement = data.sqlite.prepare(query).unwrap();
+        // statement.bind((1,2)).unwrap();
+        //
+        while let Ok(sqlite::State::Row) = statement.next() {
+            let time = statement.read::<i64, _>("time").unwrap();
+            eprintln!("time={time}");
+        //     let name = statement.read::<&str, _>("name").unwrap();
+        //     let value = statement.read::<i64, _>("value").unwrap();
+        //     println!("time={time}, name={name}, value={value}");
+        }
 
         let mut chart = plotters::prelude::ChartBuilder::on(&drawing_area)
              .build_cartesian_2d(-1.0..11.0, -2.0.. 30.0)
@@ -304,32 +311,15 @@ impl HttpServer {
                     format!("no actor/switch found for command '{command_string}'").to_string());
             };
 
-            let command = match command_string.as_str() {
-                "on" => Command::Switch(true),
-                "off" => Command::Switch(false),
-                "dim-0" => Command::Dimmer(0),
-                "dim-5" => Command::Dimmer(5),
-                "dim-10" => Command::Dimmer(10),
-                "dim-25" => Command::Dimmer(25),
-                "dim-50" => Command::Dimmer(50),
-                "dim-100" => Command::Dimmer(100),
-                "shutter-0" => Command::Shutter(1),
-                "shutter-50" => Command::Shutter(50),
-                "shutter-90" => Command::Shutter(90),
-                "shutter-170" => Command::Shutter(170),
-                "shutter-180" => Command::Shutter(180),
-                "shutter-255" => Command::Shutter(255),
-                _ => {
-                    return Self::create_response_error(
-                        &request,
-                        format!("unknown command '{command_string}'").to_string());
+            let message = match Command::from_str(&command_string) {
+                Ok(command) => {
+                    println!("SENDCOMMAND:  command={command:?} to {addr:?}");
+                    match h.knx.send(&addr.unwrap(), &command) {
+                        Ok(_) => HttpServer::response_message(Ok("sent command".to_string())),
+                        Err(text) => HttpServer::response_message(Err(text)),
+                    }
                 },
-            };
-
-            println!("SENDCOMMAND:  command={command:?} to {addr:?}");
-            let message = match h.knx.send(&addr.unwrap(), &command) {
-                Ok(_) => HttpServer::response_message(Ok("sent command".to_string())),
-                Err(text) => HttpServer::response_message(Err(text)),
+                Err(text) => HttpServer::response_message(Err(text))
             };
 
             return message;
@@ -416,7 +406,7 @@ impl HttpServer {
                     //let mut h = INSTANCE.unwrap().clone().lock().unwrap();
                     //println!("service_fn: C");
                     match request.uri().path() {
-                        "/test" => HttpServer::create_plot_response(request).unwrap(),
+                    //    "/test" => HttpServer::create_plot_response(request).unwrap(),
                         _other => HttpServer::create_response(request)
                     }
                 })

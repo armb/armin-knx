@@ -1,22 +1,17 @@
 use std::borrow::Borrow;
-use std::error::Error;
 use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
-use std::net::{IpAddr, Ipv4Addr};
+use std::io::{Seek, SeekFrom, Write};
+use std::net::{Ipv4Addr};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use regex;
-use scanf::sscanf;
 use tokio::io;
 use crate::config::{Config, EibAddr, Sensor};
 use crate::data::{Dimension, Unit, Measurement};
 
 use tokio::net::UdpSocket;
 use crate::data;
-use crate::data::Dimension::{Brightness, Temperature};
-use crate::data::Unit::{Celsius, Lux};
-
 
 fn parse_addr(s: &str) -> Result<EibAddr,String> {
     // haupt/mittel/untergruppe
@@ -299,6 +294,30 @@ pub fn create_knx_frame_onoff(grp: u16, onoff: bool) -> Result<SendMessage, ()> 
     println!(" onoff: {:X?}", raw);
 
     Ok ( SendMessage { raw } )
+}
+
+impl Command {
+    pub fn from_str(command_string: &str) -> Result<Command, String> {
+        match command_string {
+            "on" => Ok( Command::Switch(true) ),
+            "off" => Ok( Command::Switch(false) ),
+            "dim-0" => Ok( Command::Dimmer(0) ),
+            "dim-5" => Ok( Command::Dimmer(5) ),
+            "dim-10" => Ok( Command::Dimmer(10) ),
+            "dim-25" => Ok( Command::Dimmer(25) ),
+            "dim-50" => Ok( Command::Dimmer(50) ),
+            "dim-100" => Ok( Command::Dimmer(100) ),
+            "shutter-0" => Ok( Command::Shutter(1) ),
+            "shutter-50" => Ok( Command::Shutter(50) ),
+            "shutter-90" => Ok( Command::Shutter(90) ),
+            "shutter-170" => Ok( Command::Shutter(170) ),
+            "shutter-180" => Ok( Command::Shutter(180) ),
+            "shutter-255" => Ok( Command::Shutter(255) ),
+            s => {
+                Err(format!("unknown string '{}'", s))
+            }
+        }
+    }
 }
 
 
