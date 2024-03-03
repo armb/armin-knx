@@ -188,75 +188,78 @@ impl Knx {
         let bind_addr = (
             self.config.knx_multicast_interface,
             self.config.knx_multicast_port);
-        let mut socket = UdpSocket::bind(bind_addr)
-            .await
-            .expect("could not bind socket");
-            // await.map_err(|e|e.to_string()).expect("bind()");
-        socket
-            .join_multicast_v4(
-                self.config.knx_multicast_group,
-                self.config.knx_multicast_interface)
-            .expect("Could not join multicast group");
+        match UdpSocket::bind(bind_addr).await {
+            Result::Err(_error) => {
+                eprintln!("could not bind socket (addr={},port={})", bind_addr.0.to_string(), bind_addr.1);
+                Err( () )
+            },
+            Ok(mut socket) => {
+                socket.join_multicast_v4(
+                    self.config.knx_multicast_group,
+                    self.config.knx_multicast_interface)
+                    .expect("Could not join multicast group");
 
-        loop {
-            // println!("knx: loop begin");
-            let mut buf = [0; 128];
-            // println!("waiting for frame...");
-            let (number_of_bytes, _addr) = socket.recv_from(&mut buf)
-                .await.expect("can not call recv_from() on udp socket");
-            // create a slice
-            let filled_buf = &mut buf[..number_of_bytes];
-            // println!(
-            //     "message {:02X?}", &filled_buf);
-            let timestamp = SystemTime::now();
+                loop {
+                    // println!("knx: loop begin");
+                    let mut buf = [0; 128];
+                    // println!("waiting for frame...");
+                    let (number_of_bytes, _addr) = socket.recv_from(&mut buf)
+                        .await.expect("can not call recv_from() on udp socket");
+                    // create a slice
+                    let filled_buf = &mut buf[..number_of_bytes];
+                    // println!(
+                    //     "message {:02X?}", &filled_buf);
+                    let timestamp = SystemTime::now();
 
-            match Message::from_raw(filled_buf.to_vec(), timestamp) {
-                Ok(msg) => {
-                    //println!("knx-message from {:?}: measurement={:?}, raw={:02X?}", msg.src, msg.value, &filled_buf);
-                    if let Some( (id, _sensor) ) = self.get_sensor_from(&msg.dst) {
-                        let value_string = match msg.measurement {
-                            Some(m) => match m.value {
-                                Some(v) => v.to_string(),
-                                None => "?".to_string()
-                            },
-                            None => "?".to_string()
-                        };
-                        println!("knx-message from {id}: measurement={value_string}, raw={:02X?}", filled_buf);
-                        {
-                            let mut f = self.log.lock().unwrap();
-                            let now = SystemTime::now()
-                                .duration_since(SystemTime::UNIX_EPOCH)
-                                .expect("SystemTime::now()")
-                                .as_secs();
-                            match msg.measurement {
-                                Some(m) => {
-                                    let value = m.value.unwrap_or(0.);
-                                    f.write_fmt(
-                                        format_args!("{now};{id};{value}\n")).expect("write_fmt() to log");
+                    match Message::from_raw(filled_buf.to_vec(), timestamp) {
+                        Ok(msg) => {
+                            //println!("knx-message from {:?}: measurement={:?}, raw={:02X?}", msg.src, msg.value, &filled_buf);
+                            if let Some((id, _sensor)) = self.get_sensor_from(&msg.dst) {
+                                let value_string = match msg.measurement {
+                                    Some(m) => match m.value {
+                                        Some(v) => v.to_string(),
+                                        None => "?".to_string()
+                                    },
+                                    None => "?".to_string()
+                                };
+                                println!("knx-message from {id}: measurement={value_string}, raw={:02X?}", filled_buf);
+                                {
+                                    let mut f = self.log.lock().unwrap();
+                                    let now = SystemTime::now()
+                                        .duration_since(SystemTime::UNIX_EPOCH)
+                                        .expect("SystemTime::now()")
+                                        .as_secs();
+                                    match msg.measurement {
+                                        Some(m) => {
+                                            let value = m.value.unwrap_or(0.);
+                                            f.write_fmt(
+                                                format_args!("{now};{id};{value}\n")).expect("write_fmt() to log");
 
-                                    // store in-memory
-                                    let mut data = self.data.lock().unwrap();
-                                    match data.get_mut(id) {
-                                        Some(mut store) => {
-                                            store.timestamp = timestamp;
-                                            store.value = m.value
+                                            // store in-memory
+                                            let mut data = self.data.lock().unwrap();
+                                            match data.get_mut(id) {
+                                                Some(mut store) => {
+                                                    store.timestamp = timestamp;
+                                                    store.value = m.value
+                                                },
+                                                None => eprintln!("sensor not known in data struct?")
+                                            };
+                                            data.insert(id, m.value.unwrap_or(0.0));
                                         },
-                                        None => eprintln!("sensor not known in data struct?")
+                                        None => {
+                                            // message without measurement
+                                        }
                                     };
-                                    data.insert(id, m.value.unwrap_or(0.0));
-                                },
-                                None => {
-                                    // message without measurement
                                 }
+                            } else {
+                                eprintln!("No handler for message to group-address {:?} (from {:?})", &msg.dst, &msg.src);
                             }
                         }
-                    } else {
-                        eprintln!("No handler for message to group-address {:?} (from {:?})", &msg.dst, &msg.src);
+                        Err(()) => eprintln!("could not parse message.")
                     }
                 }
-                Err(()) => eprintln!("could not parse message.")
+                Ok( () )
             }
-
         }
     }
 
