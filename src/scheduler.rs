@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::knx::Command;
 
 pub struct Scheduler {
-    todo: Vec<Entry>
+    waiting_events: Vec<Entry>
 }
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ struct ScheduleFileEvent {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ScheduleFile {
-    events: Vec<ScheduleFileEvent>
+    events: Vec<ScheduleFileEvent>,
 }
 
 impl Scheduler {
@@ -33,28 +33,27 @@ impl Scheduler {
         let file = File::open(config_file).unwrap();
         let json: Vec<ScheduleFileEvent> = serde_json::from_reader(file)?;
 
-        let mut list: Vec<Entry> = vec![];
+        let mut waiting_events: Vec<Entry> = vec![];
 
         eprintln!("----------------------------------");
 
         for e in json {
             let command = Command::from_str(&e.command)?;
             if let Some(date) = e.time {
-                // let time = NaiveTime::parse_from_str(date.as_str(), "%H:%M").expect("parse time");
-                let time = NaiveTime::from_hms_opt(10, 0, 0).unwrap();
-
-                list.push(Entry { time, actor: "".to_string(), command });
+                let time = NaiveTime::parse_from_str(date.as_str(), "%H:%M:%s").expect("parse time");
+                waiting_events.push(Entry { time, actor: "".to_string(), command });
             }
         }
 
-        eprintln!("list: {list:?}");
+        eprintln!("waiting_events: {waiting_events:?}");
         eprintln!("----------------------------------");
-        Ok( Scheduler{ todo: list } )
+        Ok( Scheduler{ waiting_events } )
     }
 
     pub async fn thread_function(&self) -> Result<(), String> {
         eprintln!("----- scheduler thread_function BEGIN");
         while let Some(n) = self.find_next() {
+            eprintln!("next is: {n:?}");
             tokio::time::delay_for(Duration::from_secs(1)).await;
             // eprintln!("-----");
         }
@@ -62,14 +61,19 @@ impl Scheduler {
         Ok( () )
     }
     fn find_next(&self) -> Option<&Entry> {
-        let result = None;
+        let mut result: Option<&Entry> = None;
         let now = chrono::Local::now().naive_local().time();
-        eprintln!("now: {now:?}");
-        for e in &self.todo {
-            if now > e.time {
-                // eprintln!("----- {} > {} --> execute {} {:?}", now, e.time, e.actor, e.command);
-                return Some(e)
+        for a in &self.waiting_events {
+            // not in future
+            if a.time < now {
+                continue;
             }
+            // skip later events
+            if result.is_some() && a.time > result.unwrap().time {
+                continue;
+            }
+            result = Some(a);
+            eprintln!("-- a: {a:?}");
         }
         result
     }
