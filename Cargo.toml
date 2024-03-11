@@ -7,17 +7,14 @@ edition = "2021"
 
 [dependencies]
 scanf = "1.2.1"
-hyper = { version = "0.13.4" }
-tokio = { version = "0.2.25", features = ["full"] }
+hyper = { version = "0.14.15", features = ["server"] }
+tokio = { version = "1" , features = ["full"] }
 regex = "1.2"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 handlebars = "4.3"
 chrono = "0.4.30"
-plotters = "0.3"
+# plotters = "0.3"
+sunrise = { package = "sunrise-next", version = "1.0.1" }
 sqlite = "0.33.0"
-
-[dependencies.druid]
-version = "0.8.0"
-features = ["im", "image"]
-
+influxdb = "0.5.1"

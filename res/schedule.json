@@ -2,11 +2,19 @@
   {
     "actor": "actor-eg.hobby.spots",
     "command": "dim-100",
-    "time": "10:00:00"
+    "time": "00:00:00",
+    "timebase": "sunset"
   },
   {
     "actor": "actor-eg.hobby.spots",
     "command": "dim-0",
-    "time": "17:00:01"
+    "time": "22:10:41",
+    "timebase": "local"
+  },
+  {
+    "actor": "actor-eg.hobby.spots",
+    "command": "dim-1",
+    "time": "22:10:41",
+    "timebase": "local"
   }
 ]

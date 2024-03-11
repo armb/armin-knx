@@ -1,31 +1,24 @@
 extern crate handlebars;
 extern crate chrono;
-extern crate plotters;
 
+use hyper::Server;
 use std::string::String;
 
 use scanf::sscanf;
-use std::borrow::Borrow;
 use std::sync::{Arc, Mutex};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::convert::Infallible;
 use std::fmt::Error;
 use std::fs::File;
 use std::io::Read;
-use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use handlebars::{Handlebars};
-use hyper::{Body, Request, Response, Server};
-use hyper::body::HttpBody;
-use hyper::server::conn::AddrStream;
+use hyper::{Request, Response};
+use hyper::body::{Body};
 use hyper::header;
 use hyper::service::{make_service_fn, service_fn};
-use plotters::backend::{BitMapBackend};
-use plotters::prelude::IntoDrawingArea;
-use plotters::series::AreaSeries;
-use plotters::style::{BLUE, Color, RED};
 
-use crate::{config, Config, data, knx};
+use crate::{config, Config, data};
 use crate::data::{Data};
 
 use serde_json::value::{Map, Value as Json};
@@ -60,7 +53,7 @@ struct TemplateRoom {
 
 static mut INSTANCE: Option<Arc<Mutex<HttpServer>>> = None;
 
-enum Actor { NONE, ON, OFF, DIMMER { percent: u8 } }
+enum _Actor { NONE, ON, OFF, DIMMER { percent: u8 } }
 
 
 impl HttpServer {
@@ -85,67 +78,6 @@ impl HttpServer {
         Ok ( () )
     }
 
-
-    unsafe fn create_plot_response(request: Request<Body>) -> Result<Response<Body>, Infallible> {
-
-        println!("--- REQUEST: {request:?}");
-
-        let binding = INSTANCE.clone().unwrap();
-        let mut h = binding.lock().unwrap();
-
-        //let mut svg: String = "uninitialized".to_string();
-        //let mut drawing_area = plotters::backend::SVGBackend::with_string(&mut svg, (100, 100)).into_drawing_area();
-
-        let drawing_area = BitMapBackend::new("2.png", (600, 400))
-            .into_drawing_area();
-
-        drawing_area.fill(&plotters::prelude::WHITE).unwrap();
-
-        //
-        let data = h.data.lock().unwrap();
-        let now = chrono::Local::now().timestamp();
-        let begin = now - 3600 * 24;
-        let query = format!("SELECT * FROM data WHERE timestamp > {begin}"); // WHERE timestamp > now()-24h
-        let mut statement = data.sqlite.prepare(query).unwrap();
-        // statement.bind((1,2)).unwrap();
-        //
-        while let Ok(sqlite::State::Row) = statement.next() {
-            let time = statement.read::<i64, _>("time").unwrap();
-            eprintln!("time={time}");
-        //     let name = statement.read::<&str, _>("name").unwrap();
-        //     let value = statement.read::<i64, _>("value").unwrap();
-        //     println!("time={time}, name={name}, value={value}");
-        }
-
-        let mut chart = plotters::prelude::ChartBuilder::on(&drawing_area)
-             .build_cartesian_2d(-1.0..11.0, -2.0.. 30.0)
-             .unwrap();
-
-        let data = [(0,25.1), (1,37.2), (2,15.3), (3,32.4), (4,45.1), (5,33.6), (6,32.4), (7,10.3), (8,29.8), (9,0.9), (10,21.2)];
-
-        chart.draw_series(
-            AreaSeries::new(data.map(|(x,y)| (x as f64,y)),
-                            0.,
-                            BLUE.mix(0.2)).border_style(BLUE)).unwrap();
-        // chart.draw_series(
-        //     AreaSeries::new(
-        //         (0..).zip(data.iter().map(|x| *x)), // The data iter
-        //         0.0,                                  // Baseline
-        //         &RED.mix(0.2) // Make the series opac
-        //     ).border_style(&RED) // Make a brighter border
-        // )
-        //     .unwrap();
-
-        drawing_area.present().expect("TODO: panic message");
-
-       // println!("svg: {:?}", &mut svg);
-
-       let plot = std::fs::read("2.png").expect("2.png");
-        let response = Response::builder()
-            .header("Content-type", "image/png")
-            .body(Body::from(plot)).expect("response");
-        Ok(response)
-    }
 
 
     fn response_message(message: Result<String, String>) -> Response<Body> {
@@ -193,7 +125,7 @@ impl HttpServer {
                 };
                 template_sensor.measurement = match data_measurement {
                     Some(measurement) => {
-                        let unit_string = match sensor.dimension.as_str() {
+                        let _unit_string = match sensor.dimension.as_str() {
                             "temperature" => "°C",
                             "brightness" => "lux",
                             "onoff" => "",
@@ -213,7 +145,7 @@ impl HttpServer {
         let mut room_actors: Vec<TemplateActor> = vec![];
         for (actor_id, actor) in  &config.actors {
             if actor.room_id.eq(room_id) {
-                // println!("actor {0} in {1}: {2:?}", actor_id, actor.room_id, actor.commands);
+                // println!("Actor {0} in {1}: {2:?}", actor_id, Actor.room_id, Actor.commands);
                 let template_actor = TemplateActor {
                     id: actor_id.clone(),
                     name: actor.name.clone(),
@@ -226,7 +158,7 @@ impl HttpServer {
         let mut room_switches: Vec<TemplateSwitch> = vec![];
         for (switch_id, switch) in  &config.switches {
             if switch.room_id.eq(room_id) {
-                // println!("actor {0} in {1}: {2:?}", actor_id, actor.room_id, actor.commands);
+                // println!("Actor {0} in {1}: {2:?}", actor_id, Actor.room_id, Actor.commands);
                 let template_switch = TemplateSwitch {
                     id: switch_id.clone(),
                     name: switch.name.clone(),
@@ -290,11 +222,11 @@ impl HttpServer {
                 HttpServer::response_message(Ok("file not found".to_string()))
             }
         }
-        if sscanf!(path, "/actor/{}/{}", set_id, command_string).is_ok() {
+        if sscanf!(path, "/Actor/{}/{}", set_id, command_string).is_ok() {
             println!("SET:  id={set_id} -> {command_string}");
             let mut addr = None;
             if let Some(actor) = h.config.actors.get(&set_id) {
-                // check if known command for actor
+                // check if known command for Actor
                 if actor.commands.contains(&command_string) {
                     addr = Some(actor.eibaddr.clone());
                 }
@@ -308,7 +240,7 @@ impl HttpServer {
             if addr == None {
                 return Self::create_response_error(
                     &request,
-                    format!("no actor/switch found for command '{command_string}'").to_string());
+                    format!("no Actor/switch found for command '{command_string}'").to_string());
             };
 
             let message = match Command::from_str(&command_string) {
@@ -397,7 +329,7 @@ impl HttpServer {
         println!("httpserver-address: {addr:?}");
 
        // let a = httpserver.clone().unwrap(); //arc
-        let make_svc = make_service_fn(move |_socket:&AddrStream| {
+        let make_svc = make_service_fn(move |_| {
             //let remote_addr = socket.remote_addr();
             println!("make_service_fn: A");
             let service= service_fn(|request: Request<Body>| async move {

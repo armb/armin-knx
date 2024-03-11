@@ -1,6 +1,6 @@
 use std::collections::{HashMap};
 use std::hash::Hash;
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::net::{Ipv4Addr};
 use serde::{Deserialize, Serialize};
 use crate::data::Dimension;
 
@@ -9,9 +9,9 @@ use crate::data::Dimension;
 pub struct EibAddr(pub u8, pub u8, pub u8);
 
 impl EibAddr {
-    pub fn to_string(&self) -> String {
-        format!("{}/{}/{}", self.0, self.1, self.2).to_string()
-    }
+    // pub fn to_string(&self) -> String {
+    //     format!("{}/{}/{}", self.0, self.1, self.2).to_string()
+    // }
 }
 
 
@@ -22,7 +22,7 @@ pub struct Room {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct actor {
+pub struct Actor {
     pub name: String,
     pub room_id: String,
     pub commands: Vec<String>,
@@ -72,16 +72,18 @@ pub struct Config {
     pub room_list: Vec<String>,
     pub rooms: HashMap<String, Room>,
     pub sensors: HashMap<String, Sensor>,
-    pub actors: HashMap<String, actor>,
+    pub actors: HashMap<String, Actor>,
     pub switches: HashMap<String, Switch>,
 }
 
 
 impl Config {
+    #[allow(unused)]
     pub fn serialize(&self) -> Result<String, ()> {
         serde_json::to_string(self).map_err(|_x| { () })
     }
 
+    #[allow(unused)]
     pub fn default() -> Config {
        // let http_addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, 8080);
         Config {
@@ -118,7 +120,7 @@ impl Config {
             println!("sensor '{id}': {sensor:?}");
         }
         for (id, actor) in &self.actors {
-            println!("actor '{id}': {actor:?}-")
+            println!("Actor '{id}': {actor:?}-")
         }
         for (id, switch) in &self.switches {
             println!("switch '{id}': {switch:?}-")

@@ -1,10 +1,6 @@
 use std::collections::{HashMap, LinkedList};
-use std::error::Error;
 use std::time::SystemTime;
 use crate::config::{Sensor, Switch};
-use crate::data::Dimension::{Brightness, Temperature};
-use crate::data::Unit::Watts;
-
 
 use String as SensorId;
 
@@ -13,7 +9,7 @@ pub enum Unit {
     One,
     Celsius,
     Lux,
-    Watts,
+    _Watts,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -28,7 +24,9 @@ pub enum Dimension {
 #[derive(Debug, Copy, Clone)]
 pub struct Measurement {
     pub(crate) timestamp:SystemTime,
+    #[allow(unused)]
     pub(crate) dimension: Dimension,
+    #[allow(unused)]
     pub(crate) unit: Unit,
     pub(crate) value: Option<f32>,
 }
