@@ -14,7 +14,7 @@
   {
     "actor": "actor-eg.hobby.spots",
     "command": "dim-0",
-    "time": "02:00:00",
-    "timebase": "sunset"
+    "time": "22:10:41",
+    "timebase": "local"
   }
 ]
