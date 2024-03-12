@@ -175,7 +175,7 @@ impl Scheduler {
             if result.is_some() && a.time > result.unwrap().1.time {
                 continue;
             }
-            result = Some(a);
+            result = Some((i ,a));
  //           eprintln!("-- a: {a:?}");
         }
         match result { Some((i,_)) => Some(i), None => None }
