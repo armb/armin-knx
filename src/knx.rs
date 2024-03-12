@@ -305,6 +305,7 @@ impl Command {
             "on" => Ok( Command::Switch(true) ),
             "off" => Ok( Command::Switch(false) ),
             "dim-0" => Ok( Command::Dimmer(0) ),
+	    "dim-1" => Ok( Command::Dimmer(1) ),
             "dim-5" => Ok( Command::Dimmer(5) ),
             "dim-10" => Ok( Command::Dimmer(10) ),
             "dim-25" => Ok( Command::Dimmer(25) ),

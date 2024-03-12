@@ -115,8 +115,10 @@ impl Scheduler {
 
     pub async fn thread_function(&mut self) -> Result<(), String> {
         eprintln!("----- scheduler thread_function BEGIN");
-        while let Ok(ok) = self.handle_next().await {
-            eprintln!("----- scheduler thread_function: ok={ok:?}");
+        while let Some(n) = self.find_next() {
+//            eprintln!("next is: {n:?}");
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            // eprintln!("-----");
         }
         eprintln!("----- scheduler thread_function END");
         Ok( () )
@@ -173,8 +175,8 @@ impl Scheduler {
             if result.is_some() && a.time > result.unwrap().1.time {
                 continue;
             }
-            result = Some( (i,&a) );
-            eprintln!("-- a: {a:?}");
+            result = Some(a);
+ //           eprintln!("-- a: {a:?}");
         }
         match result { Some((i,_)) => Some(i), None => None }
     }

@@ -222,7 +222,7 @@ impl HttpServer {
                 HttpServer::response_message(Ok("file not found".to_string()))
             }
         }
-        if sscanf!(path, "/Actor/{}/{}", set_id, command_string).is_ok() {
+        if sscanf!(path, "/actor/{}/{}", set_id, command_string).is_ok() {
             println!("SET:  id={set_id} -> {command_string}");
             let mut addr = None;
             if let Some(actor) = h.config.actors.get(&set_id) {
@@ -240,7 +240,7 @@ impl HttpServer {
             if addr == None {
                 return Self::create_response_error(
                     &request,
-                    format!("no Actor/switch found for command '{command_string}'").to_string());
+                    format!("no actor/switch found for command '{command_string}'").to_string());
             };
 
             let message = match Command::from_str(&command_string) {
@@ -325,7 +325,7 @@ impl HttpServer {
         //let addr = SocketAddr::from_str(&addr_str).expect("could not parse {addr_str} as SocketAddrV4");
 
 
-        let addr: SocketAddr = (Ipv4Addr::new(0, 0, 0, 0), 8081).into();
+        let addr: SocketAddr = (Ipv4Addr::new(127, 0, 0, 1), 8081).into();
         println!("httpserver-address: {addr:?}");
 
        // let a = httpserver.clone().unwrap(); //arc
