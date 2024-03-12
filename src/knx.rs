@@ -71,7 +71,7 @@ pub struct KnxSocket {
 impl KnxSocket {
     // do not bind to local address
     pub fn create() -> io::Result<KnxSocket> {
-        let udp = std::net::UdpSocket::bind( ("0.0.0.0", 8090)  )?;
+        let udp = std::net::UdpSocket::bind( ("0.0.0.0", 0)  )?;
         Ok ( KnxSocket{ udp } )
     }
 
