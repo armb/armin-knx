@@ -346,8 +346,6 @@ pub fn create_knx_frame_dimmer(grp: u16, percent: u8) -> Result<SendMessage, ()>
     v.push( 0x80 );
     v.push(percent_byte as u8);
 
-    println!(" helligkeitswert: {:X?}", v);
-
     Ok( SendMessage { raw: v } )
 }
 

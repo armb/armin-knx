@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 
 use crate::config::Config;
-use crate::knx::{Knx, KnxSocket};
+use crate::knx::KnxSocket;
 
 
 mod knx;
@@ -71,7 +71,7 @@ async fn main() -> Result<(), > {
 
     let mut scheduler_knx = KnxSocket::create().expect("knx socket");
     scheduler_knx.connect(&config.knx_server.clone().unwrap()).expect(format!("knx connect failed").as_str());
-    let mut scheduler = scheduler::Scheduler::new("res/schedule.json", config.clone(), scheduler_knx).expect("read schedule");
+    let mut scheduler = scheduler::Scheduler::new(config.clone(), scheduler_knx).expect("read schedule");
     let future_scheduler = scheduler.thread_function();
 
 //    tokio::spawn(future_scheduler);

@@ -64,6 +64,7 @@ impl Sensor {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
+    pub schedule_file: String,
     pub http_listen_address: String,
     pub knx_server: Option<String>,
     pub knx_multicast_group: Ipv4Addr,
@@ -87,6 +88,7 @@ impl Config {
     pub fn default() -> Config {
        // let http_addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, 8080);
         Config {
+            schedule_file: String::from("res/schedule.json"),
             http_listen_address: String::from("127.0.0.1:8080"),
             knx_server: None,
             knx_multicast_group: Ipv4Addr::UNSPECIFIED,

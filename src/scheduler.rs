@@ -1,13 +1,12 @@
 use std::error::Error;
 use std::fs::File;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 use std::time::{Duration, SystemTime};
-use chrono::{Datelike, DateTime, FixedOffset, Local, NaiveDateTime, NaiveTime, Timelike};
-use chrono::format::Fixed::TimezoneOffset;
+use chrono::{Datelike, DateTime, Local, NaiveDateTime, NaiveTime, Timelike};
 use serde::{Deserialize, Serialize};
-use sunrise::{DawnType, SolarEvent};
+use sunrise::{SolarEvent};
 use crate::config::Config;
-use crate::knx::{Command, Knx, KnxSocket};
+use crate::knx::{Command, KnxSocket};
 
 pub struct Scheduler {
     waiting_events: Vec<Entry>,
@@ -46,12 +45,10 @@ struct ScheduleFile {
 }
 
 impl Scheduler {
-    pub fn new(config_file: &str, config: Arc<Config>, knx: KnxSocket) -> Result<Scheduler, Box<dyn Error>> {
+    pub fn new(config: Arc<Config>, knx: KnxSocket) -> Result<Scheduler, Box<dyn Error>> {
 
-        let waiting_events = Scheduler::read_file(config_file).expect("scheduler file");
+        let waiting_events = vec![];
 
-        eprintln!("waiting_events: {waiting_events:?}");
-        eprintln!("----------------------------------");
         Ok( Scheduler{ waiting_events, knx, config } )
     }
 
@@ -89,10 +86,10 @@ impl Scheduler {
                     let day = sunrise::SolarDay::new(
                         52.035806, 10.307611,
                         today.year(), today.month(), today.day());
-                    day.with_altitude(140f64);
+                    // day.with_altitude(140f64);
                     let seconds = day.event_time(match timebase {
-                        Timebase::Sunset => SolarEvent::Dusk(DawnType::Civil),
-                        Timebase::Sunrise => SolarEvent::Dawn(DawnType::Civil),
+                        Timebase::Sunset => SolarEvent::Sunset, //SolarEvent::Dusk(DawnType::Civil),
+                        Timebase::Sunrise => SolarEvent::Sunrise, //SolarEvent::Dawn(DawnType::Civil),
                         _ => panic!()
                     });
                     // timezone offset in seconds
@@ -110,56 +107,51 @@ impl Scheduler {
             waiting_events.push(Entry { time, actor, command, timebase });
         }
 
+        eprintln!("waiting_events: {waiting_events:?}");
+        eprintln!("----------------------------------");
+
         Ok( waiting_events )
     }
 
     pub async fn thread_function(&mut self) -> Result<(), String> {
         eprintln!("----- scheduler thread_function BEGIN");
-        while let Some(n) = self.find_next() {
+        loop {
+            self.waiting_events = Scheduler::read_file(self.config.schedule_file.as_str()).expect("scheduler file");
+            while let Some(n) = self.find_next() {
 //            eprintln!("next is: {n:?}");
+                self.handle_next(n).await.expect("handle_next() await");
+                // eprintln!("-----");
+            }
             tokio::time::sleep(Duration::from_secs(1)).await;
-            // eprintln!("-----");
         }
-        eprintln!("----- scheduler thread_function END");
-        Ok( () )
     }
 
-    async fn handle_next(&mut self) -> Result<(), ()> {
-        let n = self.find_next();
-        eprintln!("next is: {n:?}");
-        match n {
-            Some(index) => {
-                let event = self.waiting_events.remove(index);
-                let now = Local::now().time();
-                let diff = event.time - now;
-                let seconds = diff.num_seconds();
-                if seconds > 0 {
-                    eprintln!("--- need to sleep {seconds} seconds.");
-                    tokio::time::sleep(tokio::time::Duration::from_secs(seconds as u64)).await;
-                }
-                eprintln!("--- execute: actor={}, command={}", event.actor, event.command);
-                let mut addr = None;
-                if let Some(actor) = self.config.actors.get(&event.actor) {
-                    // check if known command for Actor
-                    if actor.commands.contains(&event.command) {
-                        addr = Some(actor.eibaddr.clone());
-                    } else if let  Some(switch) = self.config.switches.get(&event.actor) {
-                        if switch.commands.contains(&event.command) {
-                            // check if known command for switch
-                            addr = Some(switch.eibaddr_command.clone());
-                        }
-                    }
-                    let command = Command::from_str(&event.command).expect("command");
-                    self.knx.send(&addr.unwrap(), &command).expect("knx send");
-                }
-                eprintln!("--- removed index {index}");
-                Ok( () )
-            },
-            None => {
-                tokio::time::sleep(Duration::from_secs(1)).await;
-                Err( () )
-            }
+    async fn handle_next(&mut self, index: usize) -> Result<(), ()> {
+        let event = self.waiting_events.remove(index);
+        let now = Local::now().time();
+        let diff = event.time - now;
+        let seconds = diff.num_seconds();
+        if seconds > 0 {
+            eprintln!("--- need to sleep {seconds} seconds.");
+            tokio::time::sleep(tokio::time::Duration::from_secs(seconds as u64)).await;
         }
+        eprintln!("--- execute: actor={}, command={}", event.actor, event.command);
+        let mut addr = None;
+        if let Some(actor) = self.config.actors.get(&event.actor) {
+            // check if known command for Actor
+            if actor.commands.contains(&event.command) {
+                addr = Some(actor.eibaddr.clone());
+            } else if let  Some(switch) = self.config.switches.get(&event.actor) {
+                if switch.commands.contains(&event.command) {
+                    // check if known command for switch
+                    addr = Some(switch.eibaddr_command.clone());
+                }
+            }
+            let command = Command::from_str(&event.command).expect("command");
+            self.knx.send(&addr.unwrap(), &command).expect("knx send");
+        }
+        eprintln!("--- removed index {index}");
+        Ok( () )
     }
 
     fn find_next(&self) -> Option<usize> {
