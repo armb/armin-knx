@@ -7,14 +7,50 @@
   },
   {
     "actor": "actor-eg.hobby.spots",
-    "command": "dim-0",
-    "time": "20:09:00",
+    "command": "dim-100",
+    "time": "17:03:00",
+    "timebase": "local"
+  },
+  {
+    "actor": "actor-eg.wohn.spots",
+    "command": "dim-100",
+    "time": "17:05:00",
     "timebase": "local"
   },
   {
     "actor": "actor-eg.hobby.spots",
-    "command": "dim-0",
-    "time": "22:10:41",
+    "command": "dim-100",
+    "time": "12:55:00",
     "timebase": "local"
+  },
+  {
+    "actor": "actor-eg.kitchen.sockets",
+    "command": "off",
+    "time": "22:00:00",
+    "timebase": "local"
+  },
+  {
+    "actor": "actor-eg.hobby.shutter",
+    "command": "shutter-180",
+    "time": "00:00:00",
+    "timebase": "sunset"
+  },
+  {
+    "actor": "actor-eg.hobby.shutter2",
+    "command": "shutter-180",
+    "time": "00:00:00",
+    "timebase": "sunset"
+  },
+  {
+    "actor": "actor-eg.hobby.shutter",
+    "command": "shutter-0",
+    "time": "00:00:00",
+    "timebase": "sunrise"
+  },
+  {
+    "actor": "actor-eg.hobby.shutter2",
+    "command": "shutter-0",
+    "time": "00:00:00",
+    "timebase": "sunrise"
   }
 ]
