@@ -1,5 +1,5 @@
 use std::fs::{File, OpenOptions};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom};
 use std::net::{Ipv4Addr};
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -181,7 +181,7 @@ pub fn create(config: Arc<Config>, data: Arc<Mutex<data::Data>>) -> Result<Knx, 
         .append(true)
         .open(path).expect("Could not open log.txt");
     log.seek(SeekFrom::End(0)).expect("seek() failed");
-    let text = "-------\n".as_bytes();
+    let _text = "-------\n".as_bytes();
 //    log.write(text).expect("write() failed");
     let knx = Knx { config, data, log: Mutex::new(log) };
     Ok(knx)
@@ -229,14 +229,14 @@ impl Knx {
                         };
                         println!("knx-message from {id}: measurement={value_string}, raw={:02X?}", filled_buf);
                         {
-                            let mut f = self.log.lock().unwrap();
-                            let now = SystemTime::now()
+                            let _f = self.log.lock().unwrap();
+                            let _now = SystemTime::now()
                                 .duration_since(SystemTime::UNIX_EPOCH)
                                 .expect("SystemTime::now()")
                                 .as_secs();
                             match msg.measurement {
                                 Some(m) => {
-                                    let value = m.value.unwrap_or(0.);
+                                    let _value = m.value.unwrap_or(0.);
                                     //f.write_fmt(
                                     //    format_args!("{now};{id};{value}\n")).expect("write_fmt() to log");
 

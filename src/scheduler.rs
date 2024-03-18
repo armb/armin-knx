@@ -4,7 +4,7 @@ use std::sync::{Arc};
 use std::time::{Duration, SystemTime};
 use chrono::{Datelike, DateTime, Local, NaiveDateTime, NaiveTime, Timelike};
 use serde::{Deserialize, Serialize};
-use sunrise::{SolarEvent};
+use sunrise::{DawnType, SolarEvent};
 use crate::config::Config;
 use crate::knx::{Command, KnxSocket};
 
@@ -28,7 +28,9 @@ struct Entry {
 enum Timebase {
     Local,
     Sunrise,
-    Sunset
+    Sunset,
+    Dusk, // Abenddämmerung
+    Dawn // Morgenddämmerung
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -69,6 +71,8 @@ impl Scheduler {
                 "local" => Timebase::Local,
                 "sunset" => Timebase::Sunset,
                 "sunrise" => Timebase::Sunrise,
+                "dusk" => Timebase::Dusk,
+                "dawn" => Timebase::Dawn,
                 t => panic!("invalid timebase '{}'", t)
             };
             let parsed_time = if let Some(date) = e.time {
@@ -80,7 +84,7 @@ impl Scheduler {
             };
             let time = match timebase {
                 Timebase::Local => parsed_time,
-                Timebase::Sunrise|Timebase::Sunset => {
+                Timebase::Sunrise|Timebase::Sunset|Timebase::Dusk|Timebase::Dawn => {
                     let now = DateTime::<chrono::Local>::from(SystemTime::now());
                     let today = now.date_naive();
                     let day = sunrise::SolarDay::new(
@@ -88,8 +92,10 @@ impl Scheduler {
                         today.year(), today.month(), today.day());
                     // day.with_altitude(140f64);
                     let seconds = day.event_time(match timebase {
-                        Timebase::Sunset => SolarEvent::Sunset, //SolarEvent::Dusk(DawnType::Civil),
-                        Timebase::Sunrise => SolarEvent::Sunrise, //SolarEvent::Dawn(DawnType::Civil),
+                        Timebase::Sunset => SolarEvent::Sunset,
+                        Timebase::Sunrise => SolarEvent::Sunrise,
+                        Timebase::Dusk => SolarEvent::Dusk(DawnType::Civil),
+                        Timebase::Dawn => SolarEvent::Dawn(DawnType::Civil),
                         _ => panic!()
                     });
                     // timezone offset in seconds
@@ -98,7 +104,7 @@ impl Scheduler {
                     eprintln!("config_offset: {config_offset}");
                     eprintln!("tz_offset: {tz_offset}");
 
-                    let d = NaiveDateTime::from_timestamp_opt(
+                    let d = DateTime::from_timestamp(
                         seconds + tz_offset + config_offset, 0).unwrap();
                     eprintln!("date --> {d:?} ({})", d.timestamp());
                     d.time()
@@ -160,7 +166,7 @@ impl Scheduler {
         for i in 0..self.waiting_events.len() {
             let a = self.waiting_events.get(i).unwrap();
             // not in future
-            if a.time < now {
+            if a.time < now - Duration::from_secs(10) {
                 continue;
             }
             // skip later events

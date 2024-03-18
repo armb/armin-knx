@@ -44,12 +44,12 @@ async fn main() -> Result<(), > {
         }
     }
 
-    let future_influxdb = || async {
+    //let future_influxdb = || async {
        // sleep(time::Duration::from_secs(10));
-         let client = influxdb::Client::new(
-         "http://192.168.0.111:8086", "P3C6603E967DC8568");
-        client.ping().await.expect("ping")
-    };
+       //  let client = influxdb::Client::new(
+      //   "http://192.168.0.111:8086", "P3C6603E967DC8568");
+      //  client.ping().await.expect("ping")
+    //};
 
     let mut knx = knx::create(
         config.clone(), data.clone()).expect("create knx");
@@ -78,7 +78,12 @@ async fn main() -> Result<(), > {
    // future_influxdb().await.unwrap();
    // future_scheduler.await.unwrap();
 
-    let _ = tokio::join!(future_httpserver(), future_knx, future_scheduler, future_influxdb());
+    let _ = tokio::join!(
+        future_httpserver(),
+        future_knx,
+        future_scheduler,
+        // future_influxdb()
+    );
     //});
 
     Ok(())

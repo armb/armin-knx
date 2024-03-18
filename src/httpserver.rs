@@ -1,7 +1,6 @@
 extern crate handlebars;
 extern crate chrono;
 
-use hyper::Server;
 use std::string::String;
 
 use scanf::sscanf;
@@ -321,9 +320,8 @@ impl HttpServer {
     pub async unsafe fn thread_function() -> Result<(), Error> {
 
         //let c = httpserver.lock().expect("httpserver");
-        //let addr_str = INSTANCE.clone().unwrap().lock().unwrap().config.http_listen_address.clone();
+//        let addr_str = INSTANCE.clone().unwrap().lock().unwrap().config.http_listen_address.clone();
         //let addr = SocketAddr::from_str(&addr_str).expect("could not parse {addr_str} as SocketAddrV4");
-
 
         let addr: SocketAddr = (Ipv4Addr::new(127, 0, 0, 1), 8081).into();
         println!("httpserver-address: {addr:?}");
@@ -346,9 +344,8 @@ impl HttpServer {
             async move { Ok::<_, Infallible>(service) }
         });
 
-
         let server =
-            Server::bind(&addr).serve( make_svc);
+            hyper::Server::bind(&addr).serve( make_svc);
 
         server.await.expect("Server failure");
 

@@ -30,27 +30,27 @@
     "timebase": "local"
   },
   {
-    "actor": "actor-eg.hobby.shutter",
+    "actor": "actor-eg.hobby.shutter1",
     "command": "shutter-180",
     "time": "00:00:00",
-    "timebase": "sunset"
+    "timebase": "dusk"
   },
   {
-    "actor": "actor-eg.hobby.shutter2",
+    "actor": "actor-eg.wohn.shutter2",
     "command": "shutter-180",
     "time": "00:00:00",
-    "timebase": "sunset"
+    "timebase": "dusk"
   },
   {
-    "actor": "actor-eg.hobby.shutter",
+    "actor": "actor-eg.wohn.shutter1",
     "command": "shutter-0",
     "time": "00:00:00",
-    "timebase": "sunrise"
+    "timebase": "dawn"
   },
   {
-    "actor": "actor-eg.hobby.shutter2",
+    "actor": "actor-eg.wohn.shutter2",
     "command": "shutter-0",
     "time": "00:00:00",
-    "timebase": "sunrise"
+    "timebase": "dawn"
   }
 ]
