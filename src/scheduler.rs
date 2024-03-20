@@ -35,6 +35,7 @@ enum Timebase {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ScheduleFileEvent {
+    disabled: Option<bool>,
     time: Option<String>,
     actor: String,
     command: String,
@@ -64,7 +65,7 @@ impl Scheduler {
 
         // fill waiting_events from json file
         for e in json {
-
+            if e.disabled == Some(true) { continue; }
             let actor = e.actor;
             let command = e.command;
             let timebase = match e.timebase.as_str() {
