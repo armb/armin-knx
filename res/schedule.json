@@ -1,24 +1,15 @@
 [
   {
-    "disabled": true,
-    "actor": "// actor-eg.hobby.spots",
+    "actor": "actor-eg.hobby.spots",
     "command": "dim-100",
     "time": "00:00:00",
-    "timebase": "sunset"
+    "timebase": "dusk"
   },
   {
-    "disabled": true,
-    "actor": "// actor-eg.hobby.spots",
+    "actor": "actor-eg.wohn.spots",
     "command": "dim-100",
-    "time": "17:03:00",
-    "timebase": "local"
-  },
-  {
-    "disabled": true,
-    "actor": "// actor-eg.wohn.spots",
-    "command": "dim-100",
-    "time": "17:05:00",
-    "timebase": "local"
+    "time": "00:00:00",
+    "timebase": "dusk"
   },
   {
     "disabled": true,
@@ -35,14 +26,12 @@
     "timebase": "local"
   },
   {
-    "disabled": true,
     "actor": "actor-eg.wohn.shutter1",
     "command": "shutter-180",
     "time": "00:00:00",
     "timebase": "dusk"
   },
   {
-    "disabled": true,
     "actor": "actor-eg.wohn.shutter2",
     "command": "shutter-180",
     "time": "00:00:00",
