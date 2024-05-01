@@ -36,6 +36,8 @@ pub enum Command {
     Dimmer(u8), //percent
     Switch(bool),
     Shutter(u8),
+    Up,
+    Down
 }
 
 
@@ -104,6 +106,8 @@ impl KnxSocket {
             Command::Dimmer(x) => create_knx_frame_dimmer(grp, x.clone()),
             Command::Switch(x) => create_knx_frame_onoff(grp, x.clone()),
             Command::Shutter(x) => create_knx_frame_rollo(grp, x),
+            Command::Up => todo!(),
+            Command::Down => todo!()
         }.expect("knx frame not defined for command");
 
         println!("SEND: {group_string} -> {addr:?} -> {grp}: {msg:0X?}");

@@ -1,8 +1,9 @@
 use std::error::Error;
 use std::fs::File;
+use std::ops::Mul;
 use std::sync::{Arc};
 use std::time::{Duration, SystemTime};
-use chrono::{Datelike, DateTime, Local, NaiveDateTime, NaiveTime, Timelike};
+use chrono::{Datelike, DateTime, Local, NaiveTime, TimeDelta, Timelike};
 use serde::{Deserialize, Serialize};
 use sunrise::{DawnType, SolarEvent};
 use crate::config::Config;
@@ -76,15 +77,26 @@ impl Scheduler {
                 "dawn" => Timebase::Dawn,
                 t => panic!("invalid timebase '{}'", t)
             };
-            let parsed_time = if let Some(date) = e.time {
+            let parsed_time = if let Some(mut date) = e.time {
                 // todo: negative values like -00:01:00
-                NaiveTime::parse_from_str(&date, "%T")
-                    .expect(format!("parse time ('{}')", date).as_str())
+                println!("-- {date}");
+                let mut is_negative = false;
+                while date.starts_with('-') {
+                    date.remove(0);
+                    is_negative = !is_negative;
+                }
+                println!("++ {date}");
+                let time =
+                    NaiveTime::parse_from_str(&date, "%T")
+                        .expect(format!("parse time ('{}')", date).as_str())
+                        .num_seconds_from_midnight();
+                let time = TimeDelta::new(time as i64, 0).expect("time string");
+                if is_negative { time.mul(-1) } else { time }
             } else {
-                NaiveTime::default()
+                TimeDelta::default()
             };
             let time = match timebase {
-                Timebase::Local => parsed_time,
+                Timebase::Local => (DateTime::<chrono::Local>::default() + parsed_time).time(),
                 Timebase::Sunrise|Timebase::Sunset|Timebase::Dusk|Timebase::Dawn => {
                     let now = DateTime::<chrono::Local>::from(SystemTime::now());
                     let today = now.date_naive();
@@ -101,12 +113,11 @@ impl Scheduler {
                     });
                     // timezone offset in seconds
                     let tz_offset = Local::now().offset().local_minus_utc() as i64;
-                    let config_offset = parsed_time.num_seconds_from_midnight() as i64;
-                    eprintln!("config_offset: {config_offset}");
                     eprintln!("tz_offset: {tz_offset}");
 
                     let d = DateTime::from_timestamp(
-                        seconds + tz_offset + config_offset, 0).unwrap();
+                        seconds + tz_offset, 0).unwrap()
+                        + parsed_time;
                     eprintln!("date --> {d:?} ({})", d.timestamp());
                     d.time()
                 },

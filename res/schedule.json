@@ -1,7 +1,7 @@
 [
   {
     "actor": "actor-eg.hobby.spots",
-    "command": "dim-100",
+    "command": "dim-0",
     "time": "00:00:00",
     "timebase": "dusk"
   },

@@ -70,7 +70,7 @@ async fn main() -> Result<(), > {
 
 
     let mut scheduler_knx = KnxSocket::create().expect("knx socket");
-    scheduler_knx.connect(&config.knx_server.clone().unwrap()).expect(format!("knx connect failed").as_str());
+    scheduler_knx.connect(&config.knx_server.clone().unwrap()).expect("knx connect failed");
     let mut scheduler = scheduler::Scheduler::new(config.clone(), scheduler_knx).expect("read schedule");
     let future_scheduler = scheduler.thread_function();
 
