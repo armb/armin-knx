@@ -98,6 +98,34 @@
       "commands": [ "on", "off" ],
       "eibaddr_command": "0/1/1",
       "eibaddr_status": "0/1/7"
+    },
+    "keller-relais-b": {
+	"name": "Heizung",
+	"room_id": "keller",
+	"commands": [ "on", "off" ],
+	"eibaddr_command": "0/1/5",
+	"eibaddr_status": "0/1/6"
+    },
+    "keller-channel-c": {
+	"name": "C",
+	"room_id": "keller",
+	"commands": [ "on", "off" ],
+	"eibaddr_command": "0/1/7",
+	"eibaddr_status": "0/1/8"
+    },
+   "keller-channel-d": {
+	"name": "D",
+	"room_id": "keller",
+	"commands": [ "on", "off" ],
+	"eibaddr_command": "0/1/13",
+	"eibaddr_status": "0/1/14"
+   },
+   "keller-channel-f": {
+	"name": "F",
+	"room_id": "keller",
+	"commands": [ "on", "off" ],
+	"eibaddr_command": "0/1/15",
+	"eibaddr_status": "0/1/16"
     }
   },
   "actors": {
@@ -227,6 +255,12 @@
       "room_id": "keller",
       "commands": ["on"],
       "eibaddr": "0/6/2"
+    },
+   "actor-klingel": {
+      "name": "Klingel",
+      "room_id": "keller",
+      "commands": ["on"],
+      "eibaddr": "0/6/0"
     }
   },
   "sensors": {
