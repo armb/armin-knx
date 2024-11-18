@@ -79,13 +79,12 @@ impl Scheduler {
             };
             let parsed_time = if let Some(mut date) = e.time {
                 // todo: negative values like -00:01:00
-                println!("-- {date}");
                 let mut is_negative = false;
                 while date.starts_with('-') {
                     date.remove(0);
                     is_negative = !is_negative;
                 }
-                println!("++ {date}");
+
                 let time =
                     NaiveTime::parse_from_str(&date, "%T")
                         .expect(format!("parse time ('{}')", date).as_str())
@@ -113,26 +112,21 @@ impl Scheduler {
                     });
                     // timezone offset in seconds
                     let tz_offset = Local::now().offset().local_minus_utc() as i64;
-                    eprintln!("tz_offset: {tz_offset}");
 
                     let d = DateTime::from_timestamp(
                         seconds + tz_offset, 0).unwrap()
                         + parsed_time;
-                    eprintln!("date --> {d:?} ({})", d.timestamp());
+
                     d.time()
                 },
             };
             waiting_events.push(Entry { time, actor, command, timebase });
         }
 
-        eprintln!("waiting_events: {waiting_events:?}");
-        eprintln!("----------------------------------");
-
         Ok( waiting_events )
     }
 
     pub async fn thread_function(&mut self) -> Result<(), String> {
-        eprintln!("----- scheduler thread_function BEGIN");
         loop {
             self.waiting_events = Scheduler::read_file(self.config.schedule_file.as_str()).expect("scheduler file");
             while let Some(n) = self.find_next() {
