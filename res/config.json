@@ -1,7 +1,7 @@
 {
   "schedule_file": "res/schedule.json",
   "http_listen_address": "0.0.0.0:8081",
-  "knx_server": "192.168.0.91:3671",
+  "knx_server": "192.168.0.90:3671",
   "knx_multicast_group": "224.0.23.12",
   "knx_multicast_interface": "127.0.0.1",
   "knx_multicast_port": 3671,
