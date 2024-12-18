@@ -62,8 +62,6 @@ impl Scheduler {
 
         let mut waiting_events: Vec<Entry> = vec![];
 
-        eprintln!("----------------------------------");
-
         // fill waiting_events from json file
         for e in json {
             if e.disabled == Some(true) { continue; }
