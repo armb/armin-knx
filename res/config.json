@@ -1,12 +1,12 @@
 {
   "schedule_file": "res/schedule.json",
   "http_listen_address": "0.0.0.0:8081",
-  "knx_server": "192.168.0.91:3671",
+  "knx_server": "192.168.8.2:3671",
   "knx_multicast_group": "224.0.23.12",
   "knx_multicast_interface": "127.0.0.1",
   "knx_multicast_port": 3671,
 
-  "room_list": [ "eg.wohnen", "eg.hobby","eg.flur", "eg.kitchen", "eg.bad", "og.till", "og.bedroom", "og.bad", "keller" ],
+    "room_list": [ "eg.wohnen", "eg.hobby","eg.flur", "eg.kitchen", "eg.bad", "og.till", "og.bedroom", "og.bad", "dachboden" , "keller" ],
   "rooms": {
     "eg.wohnen": {
       "name": "EG Wohnen"
@@ -250,6 +250,19 @@
       "commands": ["on", "off"],
       "eibaddr": "0/1/9"
     },
+    "actor-dachboden.spots-l": {
+      "name": "Spots links",
+      "room_id": "dachboden",
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "eibaddr": "0/2/36"
+    },
+    "actor-dachboden.spots-r": {
+      "name": "Spots rechts",
+      "room_id": "dachboden",
+      "commands": ["dim-0", "dim-10", "dim-25", "dim-50", "dim-100"],
+      "eibaddr": "0/2/37"
+    },
+
     "actor-summer": {
       "name": "Summer",
       "room_id": "keller",
