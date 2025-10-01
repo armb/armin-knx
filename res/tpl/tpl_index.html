@@ -49,8 +49,11 @@
                 {{#each a.commands as |c|}}
                     <!-- command {{c}} -->
                     {{#if (eq c "dim-0")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">aus</button>{{/if}}
-                    {{#if (eq c "dim-5")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">5%</button>{{/if}}
-                     {{#if (eq c "dim-10")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">10%</button>{{/if}}
+                    {{#if (eq c "dim-2")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">2%</button>{{/if}}
+                    {{#if (eq c "dim-10")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">10%</button>{{/if}}
+		    {{#if (eq c "dim-5")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">5%</button>{{/if}}
+		    {{#if (eq c "dim-6")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">6%</button>{{/if}}
+		    {{#if (eq c "dim-8")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">8%</button>{{/if}}
                     {{#if (eq c "dim-25")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">25%</button>{{/if}}
                     {{#if (eq c "dim-50")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">50%</button>{{/if}}
                     {{#if (eq c "dim-100")}}<button type="submit" formaction="actor/{{a.id}}/{{c}}">an</button>{{/if}}
