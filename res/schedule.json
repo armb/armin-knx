@@ -49,5 +49,18 @@
 	"command": "shutter-0",
 	"time": "00:00:00",
 	"timebase": "sunrise"
+    },
+    {
+	"actor": "eg-flur-relais-kanal-e",
+	"command": "on",
+	"time": "07:00:00",
+	"timebase": "local"
+    },
+    {
+	"actor": "eg-flur-relais-kanal-e",
+	"command": "off",
+	"time": "23:00:00",
+	"timebase": "local"
     }
+
 ]
